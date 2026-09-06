@@ -16,7 +16,7 @@ public class Main {
     private static final String TOKEN_KEY = "DISCORD_BOT_TOKEN";
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        String token = readToken();
+        String token = readToken(ENV_FILE);
         if (token == null || token.isBlank()) {
             System.err.println(".env 파일에서 " + TOKEN_KEY + " 값을 찾지 못했습니다.");
             System.err.println(".env.example 을 .env 로 복사한 뒤 봇 토큰을 채워 주세요.");
@@ -31,14 +31,15 @@ public class Main {
         System.out.println("봇이 정상적으로 로그인되었습니다");
     }
 
-    private static String readToken() throws IOException {
-        if (!Files.exists(ENV_FILE)) {
+    static String readToken(Path envFile) throws IOException {
+        if (!Files.exists(envFile)) {
             return null;
         }
         Properties env = new Properties();
-        try (Reader reader = Files.newBufferedReader(ENV_FILE)) {
+        try (Reader reader = Files.newBufferedReader(envFile)) {
             env.load(reader);
         }
-        return env.getProperty(TOKEN_KEY);
+        String token = env.getProperty(TOKEN_KEY);
+        return token == null ? null : token.strip();
     }
 }
