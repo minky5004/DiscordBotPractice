@@ -13,9 +13,13 @@ public class PingPongListener extends ListenerAdapter {
         if (event.getAuthor().isBot()) {
             return;
         }
-        if (!PING.equals(event.getMessage().getContentRaw())) {
+        if (!isPingCommand(event.getMessage().getContentRaw())) {
             return;
         }
         event.getChannel().sendMessage(PONG).queue();
+    }
+
+    static boolean isPingCommand(String content) {
+        return PING.equals(content.strip());
     }
 }
