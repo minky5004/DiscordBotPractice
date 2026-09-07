@@ -1,13 +1,13 @@
 package com.mario.rl.discordbot;
 
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.requests.GatewayIntent;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.EnumSet;
+import java.util.Collections;
 import java.util.Properties;
 
 public class Main {
@@ -23,10 +23,12 @@ public class Main {
             return;
         }
 
-        JDABuilder.createLight(token, EnumSet.of(GatewayIntent.GUILD_MESSAGES, GatewayIntent.MESSAGE_CONTENT))
+        JDA jda = JDABuilder.createLight(token, Collections.emptyList())
                 .addEventListeners(new PingPongListener())
                 .build()
                 .awaitReady();
+
+        jda.updateCommands().addCommands(PingPongListener.COMMAND).queue();
 
         System.out.println("봇이 정상적으로 로그인되었습니다");
     }
