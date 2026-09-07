@@ -1,6 +1,6 @@
 # DiscordBotPractice
 
-> 디스코드 채팅창의 `!ping` 에 `Pong!` 으로 답하는 JDA 연습 봇
+> 디스코드 슬래시 명령 `/ping` 에 `Pong!` 으로 답하는 JDA 연습 봇
 
 ## 기술 스택
 
@@ -16,16 +16,15 @@
 
 [Discord Developer Portal](https://discord.com/developers/applications) → **New Application** → 이름 입력 → 좌측 **Bot**
 
-- **Reset Token** → 표시되는 토큰 복사 (창을 닫은 뒤에는 재발급뿐)
-- 같은 화면 아래 **Privileged Gateway Intents** → **MESSAGE CONTENT INTENT** 켜기 → **Save Changes**
+**Reset Token** → 표시되는 토큰 복사 (창을 닫은 뒤에는 재발급뿐)
 
-꺼진 MESSAGE CONTENT INTENT 의 대가 — 빈 문자열로 도착하는 메시지 내용 · 영영 걸리지 않는 `!ping`
+불필요한 특권 인텐트 설정 — 게이트웨이 인텐트와 무관하게 도착하는 슬래시 상호작용
 
 ### 2. 서버 초대
 
 좌측 **OAuth2** → **OAuth2 URL Generator**
 
-- **SCOPES**: `bot`
+- **SCOPES**: `bot` · `applications.commands`
 - **BOT PERMISSIONS**: `Send Messages`
 - 아래 **GENERATED URL** 을 브라우저에 붙여넣기 → 봇을 넣을 서버 선택
 
@@ -38,12 +37,14 @@ Copy-Item .env.example .env    # .env 를 열어 DISCORD_BOT_TOKEN= 뒤에 1번�
 .\gradlew.bat run              # → 콘솔에 "봇이 정상적으로 로그인되었습니다"
 ```
 
-서버 채팅창에 `!ping` → 봇이 `Pong!`
+서버 채팅창에 `/ping` → 봇이 `Pong!`
+
+전역 등록 명령의 클라이언트 캐시 지연 — `/` 자동완성에 `ping` 이 안 보일 때 `Ctrl+R` 새로고침
 
 ## 구조
 
 ```
-Main.java              .env 토큰 로딩 · JDA 로그인
-PingPongListener.java  !ping 수신 · Pong! 응답
+Main.java              .env 토큰 로딩 · JDA 로그인 · 슬래시 명령 등록
+PingPongListener.java  /ping 정의 · Pong! 응답
 .env.example           토큰 자리를 비워 둔 견본
 ```
