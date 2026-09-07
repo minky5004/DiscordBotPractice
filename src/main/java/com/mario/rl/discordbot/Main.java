@@ -28,7 +28,7 @@ public class Main {
                 .build()
                 .awaitReady();
 
-        jda.updateCommands().addCommands(PingPongListener.COMMAND).queue();
+        jda.updateCommands().addCommands(PingPongListener.COMMAND).complete();
 
         System.out.println("봇이 정상적으로 로그인되었습니다");
     }
