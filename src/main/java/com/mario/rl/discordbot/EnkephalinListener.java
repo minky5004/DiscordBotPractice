@@ -9,11 +9,15 @@ import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
 
 public class EnkephalinListener extends ListenerAdapter {
+
+    private static final Logger log = LoggerFactory.getLogger(EnkephalinListener.class);
 
     // 엔케팔린 1개 충전 주기. 게임 패치로 바뀌면 여기만 고친다.
     private static final Duration CHARGE_INTERVAL = Duration.ofMinutes(6);
@@ -69,7 +73,10 @@ public class EnkephalinListener extends ListenerAdapter {
             User user = event.getUser();
             MessageChannel channel = event.getChannel();
             reminders.schedule(user.getIdLong(), remaining,
-                    () -> channel.sendMessage(user.getAsMention() + " 엔케팔린 완충").queue());
+                    () -> channel.sendMessage(user.getAsMention() + " 엔케팔린 완충")
+                            // 몇 시간 뒤에 도는 발화라 채널 삭제 · 권한 상실이 여기로 온다
+                            .queue(null, error -> log.warn("완충 멘션 실패 · user={} channel={}",
+                                    user.getIdLong(), channel.getId(), error)));
             reply += "\n-# 완충 시각에 멘션 · 해제는 /" + CANCEL.getName();
         }
         event.reply(reply).queue();
