@@ -24,11 +24,11 @@ public class Main {
         }
 
         JDA jda = JDABuilder.createLight(token, Collections.emptyList())
-                .addEventListeners(new PingPongListener())
+                .addEventListeners(new PingPongListener(), new EnkephalinListener())
                 .build()
                 .awaitReady();
 
-        jda.updateCommands().addCommands(PingPongListener.COMMAND).complete();
+        jda.updateCommands().addCommands(PingPongListener.COMMAND, EnkephalinListener.COMMAND).complete();
 
         System.out.println("봇이 정상적으로 로그인되었습니다");
     }

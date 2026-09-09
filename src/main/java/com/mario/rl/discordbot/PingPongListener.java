@@ -13,6 +13,9 @@ public class PingPongListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        if (!COMMAND.getName().equals(event.getName())) {
+            return;
+        }
         event.reply(PONG).queue();
     }
 }
