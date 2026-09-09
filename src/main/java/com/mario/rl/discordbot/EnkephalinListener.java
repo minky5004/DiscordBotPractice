@@ -15,13 +15,18 @@ public class EnkephalinListener extends ListenerAdapter {
     // 엔케팔린 1개 충전 주기. 게임 패치로 바뀌면 여기만 고친다.
     private static final Duration CHARGE_INTERVAL = Duration.ofMinutes(6);
 
+    // getAsInt() 는 Math.toIntExact 라 int 를 넘기면 잘리지 않고 터진다. 어떤 관리자 레벨의 캡보다도 위.
+    private static final int INPUT_CEILING = 999;
+
     private static final String CURRENT = "현재";
     private static final String MAX = "최대";
 
     static final SlashCommandData COMMAND = Commands.slash("엔케팔린", "완충까지 남은 시간 계산")
             .addOptions(
-                    new OptionData(OptionType.INTEGER, CURRENT, "지금 보유한 엔케팔린", true).setMinValue(0),
-                    new OptionData(OptionType.INTEGER, MAX, "관리자 레벨에 따른 최대치", true).setMinValue(1));
+                    new OptionData(OptionType.INTEGER, CURRENT, "지금 보유한 엔케팔린", true)
+                            .setRequiredRange(0, INPUT_CEILING),
+                    new OptionData(OptionType.INTEGER, MAX, "관리자 레벨에 따른 최대치", true)
+                            .setRequiredRange(1, INPUT_CEILING));
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
@@ -38,7 +43,7 @@ public class EnkephalinListener extends ListenerAdapter {
             return;
         }
         long fullAt = Instant.now().plus(remaining).getEpochSecond();
-        event.reply(held + " · 완충 <t:" + fullAt + ":t> (<t:" + fullAt + ":R>)").queue();
+        event.reply(held + " · 완충 <t:" + fullAt + ":f> (<t:" + fullAt + ":R>)").queue();
     }
 
     static Duration untilFull(int current, int max) {
