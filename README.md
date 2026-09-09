@@ -1,6 +1,6 @@
 # DiscordBotPractice
 
-> 디스코드 슬래시 명령 `/ping` 에 `Pong!` 으로 답하는 JDA 연습 봇
+> 림버스 컴퍼니 엔케팔린 완충 시각을 슬래시 명령으로 알려주는 JDA 연습 봇
 
 ## 기술 스택
 
@@ -37,14 +37,20 @@ Copy-Item .env.example .env    # .env 를 열어 DISCORD_BOT_TOKEN= 뒤에 1번�
 .\gradlew.bat run              # → 콘솔에 "봇이 정상적으로 로그인되었습니다"
 ```
 
-서버 채팅창에 `/ping` → 봇이 `Pong!`
+서버 채팅창에서
 
-전역 등록 명령의 클라이언트 캐시 지연 — `/` 자동완성에 `ping` 이 안 보일 때 `Ctrl+R` 새로고침
+| 명령 | 응답 |
+|---|---|
+| `/ping` | `Pong!` |
+| `/엔케팔린 현재:132 최대:142` | 6분 × 10개 뒤 완충 시각 · 뷰어 시간대로 표시되는 디스코드 타임스탬프 |
+
+전역 등록 명령의 클라이언트 캐시 지연 — `/` 자동완성에 명령이 안 보일 때 `Ctrl+R` 새로고침
 
 ## 구조
 
 ```
-Main.java              .env 토큰 로딩 · JDA 로그인 · 슬래시 명령 등록
-PingPongListener.java  /ping 정의 · Pong! 응답
-.env.example           토큰 자리를 비워 둔 견본
+Main.java                .env 토큰 로딩 · JDA 로그인 · 슬래시 명령 등록
+PingPongListener.java    /ping 정의 · Pong! 응답
+EnkephalinListener.java  /엔케팔린 정의 · 충전 주기 상수 · 완충 시각 계산
+.env.example             토큰 자리를 비워 둔 견본
 ```
