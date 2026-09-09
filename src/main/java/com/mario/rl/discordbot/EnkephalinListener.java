@@ -37,6 +37,11 @@ public class EnkephalinListener extends ListenerAdapter {
         int max = event.getOption(MAX).getAsInt();
         String held = "엔케팔린 " + current + "/" + max;
 
+        if (current > max) {
+            event.reply(held + " · 최대치 초과 — 충전 정지 · 옵션 순서 확인").queue();
+            return;
+        }
+
         Duration remaining = untilFull(current, max);
         if (remaining.isZero()) {
             event.reply(held + " · 이미 완충").queue();
