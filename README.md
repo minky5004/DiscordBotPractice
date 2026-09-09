@@ -1,6 +1,6 @@
 # DiscordBotPractice
 
-> 림버스 컴퍼니 엔케팔린 완충 시각을 슬래시 명령으로 알려주는 JDA 연습 봇
+> 엔케팔린 완충 시각 계산 · 그 시각 멘션 예약 — 림버스 컴퍼니 JDA 연습 봇
 
 ## 기술 스택
 
@@ -42,7 +42,11 @@ Copy-Item .env.example .env    # .env 를 열어 DISCORD_BOT_TOKEN= 뒤에 1번�
 | 명령 | 응답 |
 |---|---|
 | `/ping` | `Pong!` |
-| `/엔케팔린 현재:132 최대:142` | 6분 × 10개 뒤 완충 시각 · 뷰어 시간대로 표시되는 디스코드 타임스탬프 |
+| `/엔케팔린 현재:132 최대:142` | 6분 × 10개 뒤 완충 시각(뷰어 시간대로 렌더링되는 디스코드 타임스탬프) · 그 시각의 멘션 예약 |
+| `/엔케팔린 현재:132 최대:142 알림:False` | 예약 없이 시각만 |
+| `/엔케팔린취소` | 예약한 멘션 해제 |
+
+유저당 예약 하나 — 앞의 것을 교체하는 재실행 · 봇 재시작에 전부 사라지는 메모리 예약
 
 전역 등록 명령의 클라이언트 캐시 지연 — `/` 자동완성에 명령이 안 보일 때 `Ctrl+R` 새로고침
 
@@ -51,6 +55,7 @@ Copy-Item .env.example .env    # .env 를 열어 DISCORD_BOT_TOKEN= 뒤에 1번�
 ```
 Main.java                .env 토큰 로딩 · JDA 로그인 · 슬래시 명령 등록
 PingPongListener.java    /ping 정의 · Pong! 응답
-EnkephalinListener.java  /엔케팔린 정의 · 충전 주기 상수 · 완충 시각 계산
+EnkephalinListener.java  /엔케팔린 · /엔케팔린취소 정의 · 충전 주기 상수 · 완충 시각 계산
+ReminderScheduler.java   유저당 예약 하나 · 단일 데몬 스레드 스케줄러
 .env.example             토큰 자리를 비워 둔 견본
 ```
