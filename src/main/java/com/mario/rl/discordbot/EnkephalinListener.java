@@ -112,15 +112,20 @@ public class EnkephalinListener extends ListenerAdapter {
     }
 
     private void mention(Reminder reminder) {
+        String text = UserSnowflake.fromId(reminder.userId()).getAsMention() + " 엔케팔린 완충";
         MessageChannel channel = jda.getChannelById(MessageChannel.class, reminder.channelId());
-        if (channel == null) {
-            // 예약 뒤 채널이 지워졌거나 봇이 서버에서 빠진 경우
-            log.warn("완충 멘션 채널 없음 · user={} channel={}", reminder.userId(), reminder.channelId());
+        if (channel != null) {
+            channel.sendMessage(text)
+                    // 몇 시간 뒤에 도는 발화라 권한 상실이 여기로 온다
+                    .queue(null, error -> log.warn("완충 멘션 실패 · user={} channel={}",
+                            reminder.userId(), reminder.channelId(), error));
             return;
         }
-        channel.sendMessage(UserSnowflake.fromId(reminder.userId()).getAsMention() + " 엔케팔린 완충")
-                // 몇 시간 뒤에 도는 발화라 권한 상실이 여기로 온다
-                .queue(null, error -> log.warn("완충 멘션 실패 · user={} channel={}",
+        // JDA 는 보관된 스레드를 캐시에서 빼고, 채널을 ID 로 다시 조회하는 REST 도 없다.
+        // 보관 스레드 · 삭제된 채널로 캐시에서 못 찾은 예약은 버리지 않고 DM 으로 보낸다.
+        jda.openPrivateChannelById(reminder.userId())
+                .flatMap(dm -> dm.sendMessage(text + "\n-# 예약한 채널을 찾지 못한 알림 · DM 전달"))
+                .queue(null, error -> log.warn("완충 DM 실패 · user={} channel={}",
                         reminder.userId(), reminder.channelId(), error));
     }
 
