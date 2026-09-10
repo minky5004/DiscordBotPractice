@@ -1,4 +1,4 @@
-package com.mario.rl.discordbot;
+package com.minky.discordbot;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

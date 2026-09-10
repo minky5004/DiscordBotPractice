@@ -1,4 +1,4 @@
-package com.mario.rl.discordbot;
+package com.minky.discordbot;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

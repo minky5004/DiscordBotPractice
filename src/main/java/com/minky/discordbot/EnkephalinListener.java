@@ -1,6 +1,6 @@
-package com.mario.rl.discordbot;
+package com.minky.discordbot;
 
-import com.mario.rl.discordbot.ReminderScheduler.Reminder;
+import com.minky.discordbot.ReminderScheduler.Reminder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.UserSnowflake;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
