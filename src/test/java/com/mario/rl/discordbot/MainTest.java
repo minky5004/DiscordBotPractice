@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 class MainTest {
 
+    private static final String TOKEN_KEY = "DISCORD_BOT_TOKEN";
+
     @TempDir
     Path dir;
 
@@ -20,12 +22,12 @@ class MainTest {
         Path envFile = dir.resolve(".env");
         Files.writeString(envFile, "DISCORD_BOT_TOKEN=abc.def.ghi  \n");
 
-        assertEquals("abc.def.ghi", Main.readToken(envFile));
+        assertEquals("abc.def.ghi", Main.readEnv(envFile).getProperty(TOKEN_KEY));
     }
 
     @Test
     void returnsNullWhenFileMissing() throws IOException {
-        assertNull(Main.readToken(dir.resolve("nothing-here")));
+        assertNull(Main.readEnv(dir.resolve("nothing-here")).getProperty(TOKEN_KEY));
     }
 
     @Test
@@ -33,6 +35,6 @@ class MainTest {
         Path envFile = dir.resolve(".env");
         Files.writeString(envFile, "OTHER_KEY=value\n");
 
-        assertNull(Main.readToken(envFile));
+        assertNull(Main.readEnv(envFile).getProperty(TOKEN_KEY));
     }
 }
