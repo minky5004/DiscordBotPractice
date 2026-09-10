@@ -3,7 +3,7 @@ plugins {
     id 'application'
 }
 
-group = 'com.mario.rl'
+group = 'com.minky'
 version = '1.0-SNAPSHOT'
 
 repositories {
@@ -28,7 +28,7 @@ dependencies {
 }
 
 application {
-    mainClass = 'com.mario.rl.discordbot.Main'
+    mainClass = 'com.minky.discordbot.Main'
 }
 
 tasks.named('run') {

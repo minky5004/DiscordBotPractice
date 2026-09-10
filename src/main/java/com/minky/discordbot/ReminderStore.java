@@ -1,6 +1,6 @@
-package com.mario.rl.discordbot;
+package com.minky.discordbot;
 
-import com.mario.rl.discordbot.ReminderScheduler.Reminder;
+import com.minky.discordbot.ReminderScheduler.Reminder;
 import org.flywaydb.core.Flyway;
 import org.postgresql.ds.PGSimpleDataSource;
 

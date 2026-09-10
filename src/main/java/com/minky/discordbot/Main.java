@@ -1,4 +1,4 @@
-package com.mario.rl.discordbot;
+package com.minky.discordbot;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
