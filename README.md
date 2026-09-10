@@ -38,7 +38,7 @@
 ```powershell
 git clone https://github.com/minky5004/DiscordBotPractice.git
 cd DiscordBotPractice
-Copy-Item .env.example .env      # .env 를 열어 DISCORD_BOT_TOKEN 에 1번의 토큰 · DB_PASSWORD 에 임의 비밀번호
+Copy-Item .env.example .env      # .env 를 열어 DISCORD_BOT_TOKEN 에 1번의 토큰 · DB_PASSWORD 에 영숫자 비밀번호
 docker compose up -d --wait db   # → PostgreSQL 컨테이너 healthy
 .\gradlew.bat run                # → 콘솔에 "봇이 정상적으로 로그인되었습니다"
 ```
