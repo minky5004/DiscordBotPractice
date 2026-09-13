@@ -15,5 +15,16 @@ services:
       timeout: 3s
       retries: 15
 
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      # .env 의 localhost 는 컨테이너 자기 자신 — 같은 compose 네트워크의 db 서비스로
+      DB_URL: jdbc:postgresql://db:5432/enkephalin
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   pgdata:

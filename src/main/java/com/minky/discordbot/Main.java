@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 public class Main {
@@ -20,13 +21,15 @@ public class Main {
     private static final String DB_USER_KEY = "DB_USER";
     private static final String DB_PASSWORD_KEY = "DB_PASSWORD";
 
+    private static final List<String> KEYS = List.of(TOKEN_KEY, DB_URL_KEY, DB_USER_KEY, DB_PASSWORD_KEY);
+
     public static void main(String[] args) throws IOException, InterruptedException, SQLException {
-        Properties env = readEnv(ENV_FILE);
-        List<String> missing = List.of(TOKEN_KEY, DB_URL_KEY, DB_USER_KEY, DB_PASSWORD_KEY).stream()
+        Properties env = readConfig(ENV_FILE, System.getenv());
+        List<String> missing = KEYS.stream()
                 .filter(key -> env.getProperty(key, "").isBlank())
                 .toList();
         if (!missing.isEmpty()) {
-            System.err.println(".env 파일에서 " + String.join(", ", missing) + " 값을 찾지 못했습니다.");
+            System.err.println("환경 변수 · .env 파일에서 " + String.join(", ", missing) + " 값을 찾지 못했습니다.");
             System.err.println(".env.example 을 .env 로 복사한 뒤 값을 채워 주세요.");
             return;
         }
@@ -48,6 +51,18 @@ public class Main {
         jda.updateCommands().addCommands(PingPongListener.COMMAND, EnkephalinListener.COMMAND, EnkephalinListener.CANCEL).complete();
 
         System.out.println("봇이 정상적으로 로그인되었습니다");
+    }
+
+    // 컨테이너는 .env 없이 compose 가 넘긴 환경 변수로 뜬다 — DB_URL 호스트가 localhost 가 아니라 db
+    static Properties readConfig(Path envFile, Map<String, String> environment) throws IOException {
+        Properties config = readEnv(envFile);
+        for (String key : KEYS) {
+            String value = environment.get(key);
+            if (value != null && !value.isBlank()) {
+                config.setProperty(key, value.strip());
+            }
+        }
+        return config;
     }
 
     static Properties readEnv(Path envFile) throws IOException {
