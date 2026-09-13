@@ -1,0 +1,24 @@
+name: ci
+
+# 모든 브랜치 push — PR 을 열기 전에 기능 브랜치 커밋에서 러너 결과가 나오고,
+# 체크는 커밋 SHA 에 붙어 PR 에도 그대로 보인다. pull_request 를 더하면 같은 커밋이 두 번 돈다
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+      - uses: gradle/actions/setup-gradle@v6
+      # Testcontainers 는 러너에 기본으로 있는 Docker 를 쓴다
+      - run: ./gradlew build
+      # Dockerfile 을 검증하는 유일한 자리 — 이미지 푸시는 하지 않는다
+      - run: docker build .

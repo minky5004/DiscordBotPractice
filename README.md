@@ -1,5 +1,7 @@
 # DiscordBotPractice
 
+[![ci](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml)
+
 > 엔케팔린 완충 시각 계산 · 그 시각 멘션 예약 — 림버스 컴퍼니 JDA 연습 봇
 
 ## 기술 스택
