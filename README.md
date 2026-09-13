@@ -10,7 +10,7 @@
 | Library | JDA 6.5.0 |
 | Database | PostgreSQL 17 · JDBC · Flyway |
 | Test | JUnit 5 · Testcontainers |
-| Infra | Docker Compose |
+| Infra | Docker · Docker Compose |
 | Build | Gradle 9.7.1 |
 
 ## 실행
@@ -43,6 +43,14 @@ docker compose up -d --wait db   # → PostgreSQL 컨테이너 healthy
 .\gradlew.bat run                # → 콘솔에 "봇이 정상적으로 로그인되었습니다"
 ```
 
+마지막 두 줄 대신 쓰는 컨테이너 실행
+
+```powershell
+docker compose up -d --build     # → docker compose logs bot 에 같은 로그인 로그
+```
+
+`gradlew run` 과 컨테이너 중 한쪽만 — 같은 토큰 · 같은 DB 로 뜬 두 봇의 중복 응답 · 중복 멘션
+
 서버 채팅창에서
 
 | 명령 | 응답 |
@@ -59,13 +67,14 @@ docker compose up -d --wait db   # → PostgreSQL 컨테이너 healthy
 ## 구조
 
 ```
-Main.java                   .env 로딩 · DB 연결 · JDA 로그인 · 예약 복구 · 슬래시 명령 등록
+Main.java                   환경 변수 · .env 설정 로딩 · DB 연결 · JDA 로그인 · 예약 복구 · 슬래시 명령 등록
 PingPongListener.java       /ping 정의 · Pong! 응답
 EnkephalinListener.java     /엔케팔린 · /엔케팔린취소 정의 · 충전 주기 상수 · 완충 시각 계산 · 멘션
 ReminderScheduler.java      유저당 예약 하나 · 단일 데몬 스레드 스케줄러 · 기동 시 DB 복구
 ReminderStore.java          reminder 테이블 JDBC 저장소 · 기동 시 Flyway 마이그레이션
 db/migration/               Flyway 스키마 이력
-compose.yaml                로컬 PostgreSQL
+Dockerfile                  installDist 멀티스테이지 빌드 · 비루트 JRE 이미지
+compose.yaml                PostgreSQL · 봇 컨테이너 (db 로 덮어쓴 DB 호스트)
 .env.example                토큰 · 비밀번호 자리를 비워 둔 견본
 ```
 

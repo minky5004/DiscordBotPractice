@@ -29,10 +29,8 @@ dependencies {
 
 application {
     mainClass = 'com.minky.discordbot.Main'
-}
-
-tasks.named('run') {
-    jvmArgs '-Dstdout.encoding=UTF-8', '-Dstderr.encoding=UTF-8'
+    // run 태스크와 installDist 시작 스크립트(컨테이너) 둘 다 적용
+    applicationDefaultJvmArgs = ['-Dstdout.encoding=UTF-8', '-Dstderr.encoding=UTF-8']
 }
 
 test {

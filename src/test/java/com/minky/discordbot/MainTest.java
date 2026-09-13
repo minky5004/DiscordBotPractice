@@ -6,6 +6,8 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
+import java.util.Properties;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -36,5 +38,23 @@ class MainTest {
         Files.writeString(envFile, "OTHER_KEY=value\n");
 
         assertNull(Main.readEnv(envFile).getProperty(TOKEN_KEY));
+    }
+
+    @Test
+    void environmentVariableOverridesEnvFile() throws IOException {
+        Path envFile = dir.resolve(".env");
+        Files.writeString(envFile, "DB_URL=jdbc:postgresql://localhost:5432/enkephalin\n");
+
+        Properties config = Main.readConfig(envFile, Map.of("DB_URL", "jdbc:postgresql://db:5432/enkephalin "));
+
+        assertEquals("jdbc:postgresql://db:5432/enkephalin", config.getProperty("DB_URL"));
+    }
+
+    @Test
+    void fallsBackToEnvFileWhenEnvironmentVariableMissing() throws IOException {
+        Path envFile = dir.resolve(".env");
+        Files.writeString(envFile, "DISCORD_BOT_TOKEN=abc.def.ghi\n");
+
+        assertEquals("abc.def.ghi", Main.readConfig(envFile, Map.of()).getProperty(TOKEN_KEY));
     }
 }
