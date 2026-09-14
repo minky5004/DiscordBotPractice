@@ -16,6 +16,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -49,19 +50,25 @@ class NoticeStoreTest {
     }
 
     @Test
-    void saveMaintenanceKeepsFirstResolvedWindow() throws SQLException {
-        store.saveMaintenance(new Maintenance("g", T10, T12));
-        store.saveMaintenance(new Maintenance("g", T12, T12.plusSeconds(3600)));
+    void saveMaintenanceReplacesOnlyUnconfirmedWindow() throws SQLException {
+        Maintenance usual = new Maintenance("g", T10, T12);
+        Maintenance read = new Maintenance("g", T10.minusSeconds(4 * 3600), T12);
+        assertEquals(Optional.empty(), store.findMaintenanceConfirmed("g"));
 
-        assertTrue(store.hasMaintenance("g"));
-        assertFalse(store.hasMaintenance("other"));
-        assertEquals(List.of(new Maintenance("g", T10, T12)), store.findMaintenanceEndingAfter(T10));
+        store.saveMaintenance(usual, false);
+        assertEquals(Optional.of(false), store.findMaintenanceConfirmed("g"));
+
+        store.saveMaintenance(read, true);
+        store.saveMaintenance(usual, false);
+
+        assertEquals(Optional.of(true), store.findMaintenanceConfirmed("g"));
+        assertEquals(List.of(read), store.findMaintenanceEndingAfter(T10));
     }
 
     @Test
     void findMaintenanceSkipsFinishedOnes() throws SQLException {
-        store.saveMaintenance(new Maintenance("past", T10.minusSeconds(86400 * 7), T12.minusSeconds(86400 * 7)));
-        store.saveMaintenance(new Maintenance("now", T10, T12));
+        store.saveMaintenance(new Maintenance("past", T10.minusSeconds(86400 * 7), T12.minusSeconds(86400 * 7)), true);
+        store.saveMaintenance(new Maintenance("now", T10, T12), true);
 
         assertEquals(List.of(new Maintenance("now", T10, T12)), store.findMaintenanceEndingAfter(T12.minusSeconds(1)));
     }

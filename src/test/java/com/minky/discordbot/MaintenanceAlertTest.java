@@ -51,6 +51,12 @@ class MaintenanceAlertTest {
     }
 
     @Test
+    void windowAcceptsWeekdayInParentheses() {
+        assertEquals(Optional.of(new Maintenance("g", kst(SEP_17, 6), kst(SEP_17, 12))),
+                MaintenanceAlert.window("g", SEP_17, "9월 17일(목) 06:00 ~ 12:00"));
+    }
+
+    @Test
     void windowIgnoresTimesOfOtherDates() {
         assertEquals(Optional.empty(), MaintenanceAlert.window("g", SEP_17, "2026년 9월 10일 10:00 ~ 12:00 (KST)에 정기 점검"));
         assertEquals(Optional.empty(), MaintenanceAlert.window("g", SEP_17, "2026년 9월 17일 25:00 ~ 12:00"));
@@ -60,17 +66,17 @@ class MaintenanceAlertTest {
     void resolveStopsAtFirstImageWithTimes() {
         AtomicInteger read = new AtomicInteger();
 
-        Maintenance maintenance = MaintenanceAlert.resolve("g", SEP_17,
+        Optional<Maintenance> maintenance = MaintenanceAlert.resolve("g", SEP_17,
                 Stream.of(OCR_LETTER, OCR_SEP_17, "2026년 9월 17일 07:00 ~ 13:00").peek(text -> read.incrementAndGet()));
 
-        assertEquals(new Maintenance("g", kst(SEP_17, 6), kst(SEP_17, 12)), maintenance);
+        assertEquals(Optional.of(new Maintenance("g", kst(SEP_17, 6), kst(SEP_17, 12))), maintenance);
         assertEquals(2, read.get());
     }
 
     @Test
-    void resolveFallsBackToUsualWindow() {
-        assertEquals(new Maintenance("g", kst(SEP_17, 10), kst(SEP_17, 12)),
-                MaintenanceAlert.resolve("g", SEP_17, Stream.of(OCR_LETTER, "")));
+    void resolveFindsNothingWithoutTimes() {
+        assertEquals(Optional.empty(), MaintenanceAlert.resolve("g", SEP_17, Stream.of(OCR_LETTER, "")));
+        assertEquals(new Maintenance("g", kst(SEP_17, 10), kst(SEP_17, 12)), MaintenanceAlert.usual("g", SEP_17));
     }
 
     private static java.time.Instant kst(LocalDate day, int hour) {

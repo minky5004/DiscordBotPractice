@@ -207,8 +207,11 @@ public class NoticeListener extends ListenerAdapter {
         LocalDate today = LocalDate.now(MaintenanceAlert.KST);
         for (Notice notice : notices) {
             Optional<LocalDate> day = MaintenanceAlert.date(notice.title());
-            if (day.isPresent() && !day.get().isBefore(today) && !store.hasMaintenance(notice.gid())) {
-                maintenance.register(notice.gid(), day.get(), download(notice).stream().map(Image::data).toList());
+            if (day.isPresent() && !day.get().isBefore(today) && maintenance.wants(notice.gid())) {
+                List<Image> images = download(notice);
+                // 빠진 이미지에 시각이 있었을 수 있다. 그 결과는 확정하지 않고 다음 폴에서 다시 읽는다.
+                boolean allDownloaded = images.size() == images(notice.contents()).size();
+                maintenance.register(notice.gid(), day.get(), images.stream().map(Image::data).toList(), allDownloaded);
             }
         }
     }
