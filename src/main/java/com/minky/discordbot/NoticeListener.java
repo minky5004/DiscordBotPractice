@@ -219,7 +219,8 @@ public class NoticeListener extends ListenerAdapter {
                     throw new IOException("응답 " + response.statusCode());
                 }
                 images.add(new Image(url.substring(url.lastIndexOf('/') + 1), response.body()));
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
+                // URI.create 의 IllegalArgumentException 도 여기서. 밖으로 새면 기록된 공지와 뒤 공지가 전부 빠진다.
                 log.warn("공지 이미지 받기 실패 · gid={} url={}", notice.gid(), url, e);
             }
         }
