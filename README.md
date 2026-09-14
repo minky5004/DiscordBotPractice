@@ -25,14 +25,18 @@
 공지는 10분마다 Steam 스토어 이벤트 확인 — 새 공지 하나당 메시지 하나(이미지 갤러리 · 한국어 본문 임베드) ·
 봇이 꺼져 있던 사이 공지는 다음 기동 때 올라온 순서대로.
 
+같은 채널로 가는 정기 점검 시작 · 종료 멘션 — 점검 시각의 출처는 정기 업데이트 공지 이미지 OCR(지난 1년 61건 중 60건 일치) ·
+못 읽은 주의 평소 시각 10:00 ~ 12:00.
+
 ## 기술 스택
 
 | 구분 | 기술 |
 |---|---|
 | Language | Java 25 |
 | Discord | JDA 6.5.0 — 슬래시 명령만 · 음성 모듈(opus-java) 제외 |
-| Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널의 원본 |
-| Test | JUnit 5 · Testcontainers · 26개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
+| OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
+| Test | JUnit 5 · Testcontainers · 33개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
@@ -69,10 +73,11 @@ DiscordBotPractice/
 │   ├── ReminderScheduler.java        유저당 예약 하나 · 단일 데몬 스레드 · 기동 시 복구
 │   ├── ReminderStore.java            reminder 테이블 JDBC
 │   ├── NoticeListener.java           /공지채널 · /공지채널해제 · 10분 주기 Steam 조회 · BBCode → 임베드 · 이미지 첨부
-│   └── NoticeStore.java              중계한 공지 기록 · 서버별 공지 채널 JDBC
+│   ├── NoticeStore.java              중계한 공지 기록 · 서버별 공지 채널 · 점검 시각 JDBC
+│   └── MaintenanceAlert.java         정기 업데이트 공지 제목의 날짜 · 이미지 OCR 시각 · 점검 시작 · 종료 멘션 예약
 ├── src/main/resources/db/migration/  스키마 이력
 ├── src/test/java/…/                  단위(계산 · 설정 파싱) · 통합(저장소 · 스케줄러 — 실제 PostgreSQL)
-├── Dockerfile                        JDK 빌드 → 비루트 JRE 이미지
+├── Dockerfile                        JDK 빌드 → tesseract 를 얹은 비루트 JRE 이미지
 ├── compose.yaml                      PostgreSQL · 봇 (db 서비스를 가리키는 DB_URL · 빈 토큰의 기동 거부)
 └── .env.example                      토큰 · 비밀번호 자리를 비워 둔 견본
 ```
