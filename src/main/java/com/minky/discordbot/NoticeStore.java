@@ -1,5 +1,6 @@
 package com.minky.discordbot;
 
+import com.minky.discordbot.MaintenanceAlert.Maintenance;
 import com.minky.discordbot.NoticeListener.Notice;
 
 import javax.sql.DataSource;
@@ -8,10 +9,14 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-// 중계한 공지 기록과 서버별 공지 채널 설정
+// 중계한 공지 기록 · 서버별 공지 채널 설정 · 정기 점검 시각
 class NoticeStore {
 
     record NoticeChannel(long guildId, long channelId, Long roleId) {
@@ -68,6 +73,52 @@ class NoticeStore {
              PreparedStatement statement = connection.prepareStatement("DELETE FROM notice_channel WHERE guild_id = ?")) {
             statement.setLong(1, guildId);
             return statement.executeUpdate() > 0;
+        }
+    }
+
+    // 행이 없으면 빈 값
+    Optional<Boolean> findMaintenanceConfirmed(String gid) throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement("SELECT confirmed FROM maintenance WHERE gid = ?")) {
+            statement.setString(1, gid);
+            try (ResultSet rows = statement.executeQuery()) {
+                return rows.next() ? Optional.of(rows.getBoolean("confirmed")) : Optional.empty();
+            }
+        }
+    }
+
+    // 확정된 시각은 덮어쓰지 않는다. 평소 시각으로 둔 미확정 행만 나중에 읽은 결과로 바뀐다.
+    void saveMaintenance(Maintenance maintenance, boolean confirmed) throws SQLException {
+        String sql = """
+                INSERT INTO maintenance (gid, starts_at, ends_at, confirmed) VALUES (?, ?, ?, ?)
+                ON CONFLICT (gid) DO UPDATE
+                SET starts_at = EXCLUDED.starts_at, ends_at = EXCLUDED.ends_at, confirmed = EXCLUDED.confirmed
+                WHERE NOT maintenance.confirmed
+                """;
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, maintenance.gid());
+            statement.setObject(2, maintenance.startsAt().atOffset(ZoneOffset.UTC));
+            statement.setObject(3, maintenance.endsAt().atOffset(ZoneOffset.UTC));
+            statement.setBoolean(4, confirmed);
+            statement.executeUpdate();
+        }
+    }
+
+    List<Maintenance> findMaintenanceEndingAfter(Instant instant) throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT gid, starts_at, ends_at FROM maintenance WHERE ends_at > ? ORDER BY starts_at")) {
+            statement.setObject(1, instant.atOffset(ZoneOffset.UTC));
+            try (ResultSet rows = statement.executeQuery()) {
+                List<Maintenance> maintenances = new ArrayList<>();
+                while (rows.next()) {
+                    maintenances.add(new Maintenance(rows.getString("gid"),
+                            rows.getObject("starts_at", OffsetDateTime.class).toInstant(),
+                            rows.getObject("ends_at", OffsetDateTime.class).toInstant()));
+                }
+                return maintenances;
+            }
         }
     }
 

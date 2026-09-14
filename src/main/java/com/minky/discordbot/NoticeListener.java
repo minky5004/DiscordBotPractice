@@ -33,10 +33,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -112,9 +114,12 @@ public class NoticeListener extends ListenerAdapter {
 
     private final NoticeStore store;
 
-    NoticeListener(JDA jda, NoticeStore store) {
+    private final MaintenanceAlert maintenance;
+
+    NoticeListener(JDA jda, NoticeStore store, MaintenanceAlert maintenance) {
         this.jda = jda;
         this.store = store;
+        this.maintenance = maintenance;
     }
 
     void start() {
@@ -188,11 +193,26 @@ public class NoticeListener extends ListenerAdapter {
                     }
                 }
             }
+            registerMaintenance(notices);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (IOException | SQLException | RuntimeException e) {
             // scheduleWithFixedDelay 는 예외로 끝난 태스크를 다시 돌리지 않는다. 여기서 삼켜야 다음 주기가 온다.
             log.warn("Steam 공지 확인 실패", e);
+        }
+    }
+
+    // 새 공지 판정과 따로 본다. 공지가 올라온 뒤 처음 켠 봇 · 알림 없이 기록만 한 첫 기동도 그 주 점검은 잡도록.
+    private void registerMaintenance(List<Notice> notices) throws SQLException, InterruptedException {
+        LocalDate today = LocalDate.now(MaintenanceAlert.KST);
+        for (Notice notice : notices) {
+            Optional<LocalDate> day = MaintenanceAlert.date(notice.title());
+            if (day.isPresent() && !day.get().isBefore(today) && maintenance.wants(notice.gid())) {
+                List<Image> images = download(notice);
+                // 빠진 이미지에 시각이 있었을 수 있다. 그 결과는 확정하지 않고 다음 폴에서 다시 읽는다.
+                boolean allDownloaded = images.size() == images(notice.contents()).size();
+                maintenance.register(notice.gid(), day.get(), images.stream().map(Image::data).toList(), allDownloaded);
+            }
         }
     }
 
@@ -234,15 +254,9 @@ public class NoticeListener extends ListenerAdapter {
             return;
         }
         List<String> lines = new ArrayList<>(videos(notice.contents()));
-        // 공지 본문은 외부 입력이다. 설정한 역할 외의 멘션은 막는다.
-        EnumSet<MentionType> allowed = EnumSet.noneOf(MentionType.class);
-        Long roleId = target.roleId();
-        if (roleId != null && roleId == target.guildId()) {
-            // @everyone 역할은 ID 가 서버 ID 와 같고, <@&서버ID> 로는 알림 없이 "@@everyone" 으로 찍힌다
-            lines.addFirst("@everyone");
-            allowed.add(MentionType.EVERYONE);
-        } else if (roleId != null) {
-            lines.addFirst("<@&" + roleId + ">");
+        String mention = mention(target);
+        if (!mention.isEmpty()) {
+            lines.addFirst(mention);
         }
         // 첨부 파일은 디스코드가 격자 갤러리로 묶어 임베드 위에 보인다.
         // 업로드 한도는 요청 합계가 아니라 파일 한 장마다다. 인격 공지는 한 장 2MB 대 6장이라 합계로 재면 뒤 장이 빠진다.
@@ -251,18 +265,32 @@ public class NoticeListener extends ListenerAdapter {
                 .filter(image -> image.data().length <= maxFileSize)
                 .map(image -> FileUpload.fromData(image.data(), image.name()))
                 .toList();
-        MessageCreateAction message = channel.sendMessageEmbeds(embed(notice))
-                .addFiles(files)
-                .setAllowedMentions(allowed);
+        MessageCreateAction message = channel.sendMessageEmbeds(embed(notice)).addFiles(files);
         if (!lines.isEmpty()) {
             // 유튜브 링크는 본문에 있어야 디스코드가 영상 플레이어를 붙인다
             message.setContent(String.join("\n", lines));
         }
-        if (roleId != null && roleId != target.guildId()) {
-            message.mentionRoles(roleId);
-        }
         // 전송이 끝난 뒤에 다음 공지로 넘어간다. 큰 업로드가 뒤 공지와 겹쳐 순서가 섞이지 않도록. 실패는 poll 루프가 남긴다.
-        message.complete();
+        allowMention(message, target).complete();
+    }
+
+    // @everyone 역할은 ID 가 서버 ID 와 같고, <@&서버ID> 로는 알림 없이 "@@everyone" 으로 찍힌다
+    static String mention(NoticeChannel target) {
+        Long roleId = target.roleId();
+        if (roleId == null) {
+            return "";
+        }
+        return roleId == target.guildId() ? "@everyone" : "<@&" + roleId + ">";
+    }
+
+    // 공지 본문은 외부 입력이다. 설정한 역할 외의 멘션은 막는다.
+    static MessageCreateAction allowMention(MessageCreateAction message, NoticeChannel target) {
+        Long roleId = target.roleId();
+        if (roleId != null && roleId == target.guildId()) {
+            return message.setAllowedMentions(EnumSet.of(MentionType.EVERYONE));
+        }
+        message.setAllowedMentions(EnumSet.noneOf(MentionType.class));
+        return roleId == null ? message : message.mentionRoles(roleId);
     }
 
     // 이미지는 첨부 파일로 가므로 임베드에는 제목 · 본문만

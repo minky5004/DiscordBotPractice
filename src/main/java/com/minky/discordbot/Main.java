@@ -50,7 +50,11 @@ public class Main {
         // 채널 캐시는 awaitReady 뒤에야 채워지므로 복구도 그 뒤에
         EnkephalinListener enkephalin = new EnkephalinListener(jda, store);
         enkephalin.restore();
-        NoticeListener notice = new NoticeListener(jda, new NoticeStore(database));
+        NoticeStore noticeStore = new NoticeStore(database);
+        MaintenanceAlert maintenance = new MaintenanceAlert(jda, noticeStore);
+        // 폴러가 같은 점검을 다시 등록하지 않도록 복구가 먼저
+        maintenance.restore();
+        NoticeListener notice = new NoticeListener(jda, noticeStore, maintenance);
         notice.start();
         jda.addEventListener(enkephalin, notice);
 
