@@ -1,9 +1,6 @@
 package com.minky.discordbot;
 
 import com.minky.discordbot.ReminderScheduler.Reminder;
-import org.flywaydb.core.Flyway;
-import org.postgresql.ds.PGSimpleDataSource;
-
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -21,20 +18,8 @@ class ReminderStore {
 
     private final DataSource dataSource;
 
-    private ReminderStore(DataSource dataSource) {
+    ReminderStore(DataSource dataSource) {
         this.dataSource = dataSource;
-    }
-
-    // 스키마를 최신으로 올린 뒤에만 저장소를 내준다
-    static ReminderStore connect(String url, String user, String password) {
-        PGSimpleDataSource dataSource = new PGSimpleDataSource();
-        dataSource.setURL(url);
-        dataSource.setUser(user);
-        dataSource.setPassword(password);
-        // 슬래시 응답 기한이 3초라 기본 10초를 기다리면 DB 장애가 "상호작용 실패" 로 착지한다
-        dataSource.setConnectTimeout(2);
-        Flyway.configure().dataSource(dataSource).load().migrate();
-        return new ReminderStore(dataSource);
     }
 
     void save(Reminder reminder) throws SQLException {

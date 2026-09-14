@@ -36,7 +36,7 @@ class ReminderSchedulerTest {
 
     @BeforeAll
     static void connect() {
-        store = ReminderStore.connect(DB.getJdbcUrl(), DB.getUsername(), DB.getPassword());
+        store = new ReminderStore(Main.connectDatabase(DB.getJdbcUrl(), DB.getUsername(), DB.getPassword()));
     }
 
     @BeforeEach
