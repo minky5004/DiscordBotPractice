@@ -1,5 +1,6 @@
 package com.minky.discordbot;
 
+import com.minky.discordbot.MaintenanceAlert.Maintenance;
 import com.minky.discordbot.NoticeListener.Notice;
 
 import javax.sql.DataSource;
@@ -8,10 +9,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
-// 중계한 공지 기록과 서버별 공지 채널 설정
+// 중계한 공지 기록 · 서버별 공지 채널 설정 · 정기 점검 시각
 class NoticeStore {
 
     record NoticeChannel(long guildId, long channelId, Long roleId) {
@@ -68,6 +72,45 @@ class NoticeStore {
              PreparedStatement statement = connection.prepareStatement("DELETE FROM notice_channel WHERE guild_id = ?")) {
             statement.setLong(1, guildId);
             return statement.executeUpdate() > 0;
+        }
+    }
+
+    boolean hasMaintenance(String gid) throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM maintenance WHERE gid = ?")) {
+            statement.setString(1, gid);
+            try (ResultSet rows = statement.executeQuery()) {
+                return rows.next();
+            }
+        }
+    }
+
+    // 먼저 읽은 시각을 지킨다. 같은 공지를 두 번 등록해도 알림 시각이 흔들리지 않도록.
+    void saveMaintenance(Maintenance maintenance) throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "INSERT INTO maintenance (gid, starts_at, ends_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING")) {
+            statement.setString(1, maintenance.gid());
+            statement.setObject(2, maintenance.startsAt().atOffset(ZoneOffset.UTC));
+            statement.setObject(3, maintenance.endsAt().atOffset(ZoneOffset.UTC));
+            statement.executeUpdate();
+        }
+    }
+
+    List<Maintenance> findMaintenanceEndingAfter(Instant instant) throws SQLException {
+        try (Connection connection = dataSource.getConnection();
+             PreparedStatement statement = connection.prepareStatement(
+                     "SELECT gid, starts_at, ends_at FROM maintenance WHERE ends_at > ? ORDER BY starts_at")) {
+            statement.setObject(1, instant.atOffset(ZoneOffset.UTC));
+            try (ResultSet rows = statement.executeQuery()) {
+                List<Maintenance> maintenances = new ArrayList<>();
+                while (rows.next()) {
+                    maintenances.add(new Maintenance(rows.getString("gid"),
+                            rows.getObject("starts_at", OffsetDateTime.class).toInstant(),
+                            rows.getObject("ends_at", OffsetDateTime.class).toInstant()));
+                }
+                return maintenances;
+            }
         }
     }
 
