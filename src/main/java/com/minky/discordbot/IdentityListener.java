@@ -7,8 +7,15 @@ import com.minky.discordbot.IdentityCatalog.SkillStats;
 import com.minky.discordbot.IdentityCatalog.Stats;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.Command;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +27,58 @@ public class IdentityListener extends ListenerAdapter {
 
     // 위키 수치는 CC BY-SA
     private static final String WIKI_CREDIT = "수치: Limbus Company Wiki (wiki.gg)";
+
+    private static final String NAME = "이름";
+    private static final String OPEN = "공개";
+
+    static final SlashCommandData COMMAND = Commands.slash("인격", "림버스 컴퍼니 인격의 스킬 · 패시브 조회")
+            .addOptions(
+                    // 칭호가 길고 한 · 영이 섞여 자동완성 없이는 쓰이지 않는다
+                    new OptionData(OptionType.STRING, NAME, "인격 칭호 또는 수감자 이름", true, true),
+                    new OptionData(OptionType.BOOLEAN, OPEN, "채널에 공개 · 기본 나만 보기", false));
+
+    private final IdentityCatalog catalog;
+
+    IdentityListener(IdentityCatalog catalog) {
+        this.catalog = catalog;
+    }
+
+    @Override
+    public void onCommandAutoCompleteInteraction(CommandAutoCompleteInteractionEvent event) {
+        if (!COMMAND.getName().equals(event.getName())) {
+            return;
+        }
+        event.replyChoices(search(catalog.identities(), event.getFocusedOption().getValue()).stream()
+                .map(identity -> new Command.Choice(label(identity), String.valueOf(identity.id())))
+                .toList()).queue();
+    }
+
+    @Override
+    public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        if (!COMMAND.getName().equals(event.getName())) {
+            return;
+        }
+        List<Identity> identities = catalog.identities();
+        Identity identity = find(identities, event.getOption(NAME).getAsString());
+        if (identity == null) {
+            // 기동 직후엔 목록이 아직 비어 있다
+            event.reply(identities.isEmpty() ? "인격 목록을 아직 읽지 못했습니다 · 잠시 뒤 다시" : "찾지 못한 인격 · 자동완성 후보에서 선택")
+                    .setEphemeral(true).queue();
+            return;
+        }
+        event.replyEmbeds(embed(identity))
+                .setEphemeral(!event.getOption(OPEN, false, OptionMapping::getAsBoolean))
+                .queue();
+    }
+
+    // 자동완성 후보를 고르면 값이 인격 ID, 직접 친 글자면 첫 일치
+    static Identity find(List<Identity> identities, String query) {
+        return identities.stream()
+                .filter(identity -> String.valueOf(identity.id()).equals(query))
+                .findFirst()
+                .or(() -> search(identities, query).stream().findFirst())
+                .orElse(null);
+    }
 
     static MessageEmbed embed(Identity identity) {
         EmbedBuilder embed = new EmbedBuilder().setTitle(NoticeListener.cut(title(identity), MessageEmbed.TITLE_MAX_LENGTH));

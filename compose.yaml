@@ -23,6 +23,15 @@ services:
       DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:?.env 에 DISCORD_BOT_TOKEN 필요}
       # .env 의 localhost 는 컨테이너 자기 자신 — 같은 compose 네트워크의 db 서비스로
       DB_URL: jdbc:postgresql://db:5432/enkephalin
+      # 게임 폴더는 아래 볼륨으로 붙인 컨테이너 안 경로
+      LIMBUS_DIR: /limbus
+    volumes:
+      # 게임 텍스트를 읽기만 한다. LIMBUS_DIR 이 없으면 리포를 붙여 /인격 없이 뜬다 — 빈 값은 볼륨 정의 자체가 깨진다.
+      # 짧은 표기는 Windows 드라이브 문자의 : 에서 잘린다.
+      - type: bind
+        source: ${LIMBUS_DIR:-.}
+        target: /limbus
+        read_only: true
     depends_on:
       db:
         condition: service_healthy

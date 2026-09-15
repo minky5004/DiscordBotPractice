@@ -97,6 +97,16 @@ class IdentityListenerTest {
     }
 
     @Test
+    void findPrefersChoiceIdOverTypedText() {
+        Identity lcb = new Identity(10101, "LCB 수감자", "이상", null, List.of(), List.of());
+        List<Identity> identities = List.of(lcb, SOLEMN_LAMENT);
+
+        assertEquals(SOLEMN_LAMENT, IdentityListener.find(identities, "10110"));
+        assertEquals(SOLEMN_LAMENT, IdentityListener.find(identities, "엄숙"));
+        assertNull(IdentityListener.find(identities, "없는 인격"));
+    }
+
+    @Test
     void choiceNameFitsDiscordLimit() {
         Identity identity = new Identity(1, "가".repeat(120), "이상", null, List.of(), List.of());
 

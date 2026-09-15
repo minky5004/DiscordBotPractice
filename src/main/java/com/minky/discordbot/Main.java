@@ -2,6 +2,7 @@ package com.minky.discordbot;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.flywaydb.core.Flyway;
 import org.postgresql.ds.PGSimpleDataSource;
 
@@ -11,10 +12,12 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 public class Main {
 
@@ -24,11 +27,17 @@ public class Main {
     private static final String DB_USER_KEY = "DB_USER";
     private static final String DB_PASSWORD_KEY = "DB_PASSWORD";
 
-    private static final List<String> KEYS = List.of(TOKEN_KEY, DB_URL_KEY, DB_USER_KEY, DB_PASSWORD_KEY);
+    // 게임 설치 폴더. 없으면 /인격 없이 뜬다.
+    private static final String LIMBUS_DIR_KEY = "LIMBUS_DIR";
+
+    private static final List<String> REQUIRED_KEYS = List.of(TOKEN_KEY, DB_URL_KEY, DB_USER_KEY, DB_PASSWORD_KEY);
+
+    private static final List<String> KEYS =
+            Stream.concat(REQUIRED_KEYS.stream(), Stream.of(LIMBUS_DIR_KEY)).toList();
 
     public static void main(String[] args) throws IOException, InterruptedException, SQLException {
         Properties env = readConfig(ENV_FILE, System.getenv());
-        List<String> missing = KEYS.stream()
+        List<String> missing = REQUIRED_KEYS.stream()
                 .filter(key -> env.getProperty(key, "").isBlank())
                 .toList();
         if (!missing.isEmpty()) {
@@ -58,10 +67,32 @@ public class Main {
         notice.start();
         jda.addEventListener(enkephalin, notice);
 
-        jda.updateCommands().addCommands(PingPongListener.COMMAND, EnkephalinListener.COMMAND, EnkephalinListener.CANCEL,
-                NoticeListener.COMMAND, NoticeListener.CANCEL).complete();
+        List<SlashCommandData> commands = new ArrayList<>(List.of(PingPongListener.COMMAND, EnkephalinListener.COMMAND,
+                EnkephalinListener.CANCEL, NoticeListener.COMMAND, NoticeListener.CANCEL));
+        IdentityCatalog identities = identityCatalog(env.getProperty(LIMBUS_DIR_KEY, ""));
+        if (identities != null) {
+            identities.start();
+            jda.addEventListener(new IdentityListener(identities));
+            commands.add(IdentityListener.COMMAND);
+        }
+        jda.updateCommands().addCommands(commands).complete();
 
         System.out.println("봇이 정상적으로 로그인되었습니다");
+    }
+
+    // 게임 텍스트가 없으면 /인격 은 등록하지 않는다. 나머지 명령은 그대로 뜬다.
+    private static IdentityCatalog identityCatalog(String gameDir) {
+        if (gameDir.isBlank()) {
+            System.err.println(LIMBUS_DIR_KEY + " 값이 없어 /" + IdentityListener.COMMAND.getName() + " 을 등록하지 않습니다.");
+            return null;
+        }
+        IdentityCatalog catalog = new IdentityCatalog(Path.of(gameDir));
+        if (!catalog.hasGameFiles()) {
+            System.err.println(LIMBUS_DIR_KEY + " 경로에서 게임 텍스트를 찾지 못해 /" + IdentityListener.COMMAND.getName()
+                    + " 을 등록하지 않습니다 · " + gameDir);
+            return null;
+        }
+        return catalog;
     }
 
     // 스키마를 최신으로 올린 뒤에만 저장소에 넘긴다
