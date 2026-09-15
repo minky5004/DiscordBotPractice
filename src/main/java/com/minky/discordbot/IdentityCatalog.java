@@ -3,17 +3,34 @@ package com.minky.discordbot;
 import net.dv8tion.jda.api.utils.data.DataArray;
 import net.dv8tion.jda.api.utils.data.DataObject;
 import net.dv8tion.jda.api.utils.data.DataType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 // 설치된 게임의 한국어 · 영어 텍스트에 림버스 컴퍼니 위키(wiki.gg)의 수치를 붙인 인격 목록
 class IdentityCatalog {
@@ -58,6 +75,172 @@ class IdentityCatalog {
     private static final Pattern MARKUP = Pattern.compile("</?(?:color|style|link|sprite|mark|noparse|b|u|s)(?:[= ][^>]*)?>");
 
     private static final Pattern KEYWORD = Pattern.compile("\\[(\\w+)]");
+
+    private static final Logger log = LoggerFactory.getLogger(IdentityCatalog.class);
+
+    // 게임 설치 폴더 기준
+    private static final String LOCALIZE = "LimbusCompany_Data/Assets/Resources_moved/Localize";
+
+    private static final Pattern LOCALIZE_FILE = Pattern.compile("(?:KR|EN)_(?:Personalities|Skills|Passive|Bufs|SkillTag).*\\.json");
+
+    private static final URI WIKI_API = URI.create("https://limbuscompany.wiki.gg/api.php");
+
+    // MediaWiki 는 문서 내용을 요청 하나에 50개까지 준다
+    private static final int WIKI_BATCH = 50;
+
+    // MediaWiki API 규약상 연락처가 있는 User-Agent
+    private static final String USER_AGENT = "DiscordBotPractice (https://github.com/minky5004/DiscordBotPractice)";
+
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(10);
+
+    // 문서 50개 내용이 한 응답이라 공지 API 보다 길게
+    private static final Duration WIKI_TIMEOUT = Duration.ofSeconds(30);
+
+    private static final Duration REFRESH_INTERVAL = Duration.ofHours(24);
+
+    private static final Duration RETRY_INTERVAL = Duration.ofHours(1);
+
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+
+    // JDA 가 내려간 뒤 JVM 이 이 스레드에 붙들리지 않게 데몬으로
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(task -> {
+        Thread thread = new Thread(task, "limbus-identity");
+        thread.setDaemon(true);
+        return thread;
+    });
+
+    private final Path localize;
+
+    // 조회는 JDA 스레드, 교체는 갱신 스레드. 목록을 통째로 바꿔 끼운다.
+    private volatile List<Identity> identities = List.of();
+
+    // 위키가 실패하면 마지막으로 받은 문서로 조립한다. 갱신 스레드에서만 만진다.
+    private Map<String, String> pages = Map.of();
+
+    private boolean wikiFailed;
+
+    IdentityCatalog(Path gameDir) {
+        this.localize = gameDir.resolve(LOCALIZE);
+    }
+
+    boolean hasGameFiles() {
+        return Files.isDirectory(localize);
+    }
+
+    List<Identity> identities() {
+        return identities;
+    }
+
+    void start() {
+        executor.execute(this::refresh);
+    }
+
+    void refresh() {
+        Duration next = REFRESH_INTERVAL;
+        try {
+            wikiFailed = false;
+            List<Identity> built = build(readLocalize(localize), this::fetchWiki);
+            identities = built;
+            log.info("인격 목록 {}개 · 수치 있는 인격 {}개", built.size(), built.stream().filter(identity -> identity.stats() != null).count());
+            if (wikiFailed) {
+                next = RETRY_INTERVAL;
+            }
+        } catch (IOException | RuntimeException e) {
+            // Steam 패치 도중 반쯤 쓰인 파일 등. 이전 목록을 그대로 쓴다.
+            log.warn("인격 목록 갱신 실패", e);
+            next = RETRY_INTERVAL;
+        } finally {
+            // 태스크 밖으로 예외가 새도 다음 갱신은 잡혀 있게
+            executor.schedule(this::refresh, next.toMinutes(), TimeUnit.MINUTES);
+        }
+    }
+
+    private Map<String, String> fetchWiki(List<String> titles) {
+        Map<String, String> fetched = new HashMap<>();
+        try {
+            for (int i = 0; i < titles.size(); i += WIKI_BATCH) {
+                List<String> batch = titles.subList(i, Math.min(i + WIKI_BATCH, titles.size()));
+                fetched.putAll(wikiPages(postWiki(batch), batch));
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            wikiFailed = true;
+            return pages;
+        } catch (IOException | RuntimeException e) {
+            log.warn("위키 수치 받기 실패 · 이전 수치 사용", e);
+            wikiFailed = true;
+            return pages;
+        }
+        pages = fetched;
+        return fetched;
+    }
+
+    // 제목 50개를 쿼리 문자열에 실으면 URL 이 길어져 POST 로
+    private String postWiki(List<String> titles) throws IOException, InterruptedException {
+        String form = "action=query&prop=revisions&rvprop=content&rvslots=main&redirects=1&format=json&formatversion=2&titles="
+                + URLEncoder.encode(String.join("|", titles), StandardCharsets.UTF_8);
+        HttpRequest request = HttpRequest.newBuilder(WIKI_API)
+                .timeout(WIKI_TIMEOUT)
+                .header("User-Agent", USER_AGENT)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(form))
+                .build();
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new IOException("위키 응답 " + response.statusCode());
+        }
+        return response.body();
+    }
+
+    // 응답의 문서 제목은 정규화 · 리다이렉트를 거친 뒤의 것이다. 요청한 제목으로 되돌려 담는다.
+    static Map<String, String> wikiPages(String json, List<String> titles) {
+        DataObject query = DataObject.fromJson(json).getObject("query");
+        Map<String, String> normalized = renames(query, "normalized");
+        Map<String, String> redirects = renames(query, "redirects");
+        Map<String, String> contents = new HashMap<>();
+        DataArray list = query.optArray("pages").orElseGet(DataArray::empty);
+        for (int i = 0; i < list.length(); i++) {
+            DataObject page = list.getObject(i);
+            DataArray revisions = page.optArray("revisions").orElseGet(DataArray::empty);
+            if (revisions.length() > 0) {
+                contents.put(page.getString("title"), revisions.getObject(0).getObject("slots").getObject("main").getString("content"));
+            }
+        }
+
+        Map<String, String> result = new HashMap<>();
+        for (String title : titles) {
+            String resolved = normalized.getOrDefault(title, title);
+            String content = contents.get(redirects.getOrDefault(resolved, resolved));
+            if (content != null) {
+                result.put(title, content);
+            }
+        }
+        return result;
+    }
+
+    private static Map<String, String> renames(DataObject query, String key) {
+        Map<String, String> renames = new HashMap<>();
+        DataArray list = query.optArray(key).orElseGet(DataArray::empty);
+        for (int i = 0; i < list.length(); i++) {
+            renames.put(list.getObject(i).getString("from"), list.getObject(i).getString("to"));
+        }
+        return renames;
+    }
+
+    static Map<String, byte[]> readLocalize(Path localize) throws IOException {
+        Map<String, byte[]> files = new TreeMap<>();
+        for (String language : List.of("kr", "en")) {
+            try (Stream<Path> paths = Files.list(localize.resolve(language))) {
+                for (Path path : (Iterable<Path>) paths::iterator) {
+                    String name = path.getFileName().toString();
+                    if (LOCALIZE_FILE.matcher(name).matches()) {
+                        files.put(name, Files.readAllBytes(path));
+                    }
+                }
+            }
+        }
+        return files;
+    }
 
     static List<Identity> build(Map<String, byte[]> files, Function<List<String>, Map<String, String>> wiki) {
         Map<Integer, DataObject> identities = rows(files, "KR_Personalities");

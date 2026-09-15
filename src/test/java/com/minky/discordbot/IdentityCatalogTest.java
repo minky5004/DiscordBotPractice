@@ -187,6 +187,23 @@ class IdentityCatalogTest {
         }
     }
 
+    @Test
+    void wikiPagesAreKeyedByRequestedTitle() {
+        String json = """
+                {"batchcomplete":true,"query":{
+                  "normalized":[{"fromencoded":false,"from":"lCB_Sinner_Faust","to":"LCB Sinner Faust"}],
+                  "redirects":[{"from":"The Red Gaze Vergilius","to":"Vergilius/Assist Unit"}],
+                  "pages":[
+                    {"ns":0,"title":"No Such Identity","missing":true},
+                    {"pageid":2661,"ns":0,"title":"Vergilius/Assist Unit","revisions":[{"slots":{"main":{"content":"{{TabbedHeader}}"}}}]},
+                    {"pageid":3668,"ns":0,"title":"LCB Sinner Faust","revisions":[{"slots":{"main":{"content":"{{IDPage|rarity=1}}"}}}]}]}}""";
+
+        assertEquals(Map.of(
+                        "lCB_Sinner_Faust", "{{IDPage|rarity=1}}",
+                        "The Red Gaze Vergilius", "{{TabbedHeader}}"),
+                IdentityCatalog.wikiPages(json, List.of("lCB_Sinner_Faust", "The Red Gaze Vergilius", "No Such Identity")));
+    }
+
     private static Map<String, byte[]> files(String... nameAndJson) {
         Map<String, byte[]> files = new LinkedHashMap<>();
         for (int i = 0; i < nameAndJson.length; i += 2) {
