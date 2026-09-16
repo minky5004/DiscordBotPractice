@@ -121,6 +121,7 @@ class IdentityCatalogTest {
                 |sin=Def
                 |name=Guard
                 |type=Guard
+                |icon=Guard Yi Sang Icon
                 |spower=10
                 |cpower=+ 4
                 |coin=1
@@ -147,13 +148,14 @@ class IdentityCatalogTest {
         });
 
         assertEquals(List.of("Lobotomy E.G.O::Solemn Lament Yi Sang"), requested);
-        assertEquals(List.of(new Identity(10110, "로보토미 E.G.O::엄숙한 애도", "이상",
+        assertEquals(List.of(new Identity(10110, "로보토미 E.G.O::엄숙한 애도", "이상", null,
                         new Stats(3, 0, 2.0, 0.5, 2.0),
                         List.of(
                                 new Skill(1011001, "떠난이에게 축하를",
                                         "[합 승리시] 침잠 횟수 2 증가\n코인1 탄환 1 소모 · [적중시] 부여",
-                                        new SkillStats("우울", "관통", 3, "+2", 2)),
-                                new Skill(1011002, "수비", "", new SkillStats(null, "방어", 10, "+4", 1)),
+                                        new SkillStats("우울", "관통", 3, "+2", 2, null)),
+                                new Skill(1011002, "수비", "", new SkillStats(null, "방어", 10, "+4", 1,
+                                        "https://limbuscompany.wiki.gg/wiki/Special:FilePath/Guard%20Yi%20Sang%20Icon.png")),
                                 new Skill(1011003, "위키에 없는 스킬", "원문", null)),
                         List.of(
                                 new Passive(1011011, "쏘아라", "탄환를 얻으면", false, "색욕 5 보유"),
@@ -226,6 +228,23 @@ class IdentityCatalogTest {
                         "lCB_Sinner_Faust", "{{IDPage|rarity=1}}",
                         "The Red Gaze Vergilius", "{{TabbedHeader}}"),
                 IdentityCatalog.wikiPages(json, List.of("lCB_Sinner_Faust", "The Red Gaze Vergilius", "No Such Identity")));
+    }
+
+    @Test
+    void imageTakesTheFullArtAndFallsBackToTheIdleSprite() {
+        // 파일명은 문서 제목에서 콜론이 빠진 꼴 — 인격 199건 중 197건이 이 둘 중 하나로 걸린다
+        assertEquals("https://limbuscompany.wiki.gg/wiki/Special:FilePath/Lobotomy%20E.G.O%20Solemn%20Lament%20Yi%20Sang%20Full.png",
+                IdentityCatalog.image("Lobotomy E.G.O::Solemn Lament Yi Sang",
+                        "[[File:Lobotomy E.G.O Solemn Lament Yi Sang Full.png]]"));
+        assertEquals("https://limbuscompany.wiki.gg/wiki/Special:FilePath/Blade%20Lineage%20Salsu%20Yi%20Sang%20Idle%20Sprite.png",
+                IdentityCatalog.image("Blade Lineage Salsu Yi Sang",
+                        "[[File:Blade Lineage Salsu Yi Sang Idle Sprite.png]]"));
+    }
+
+    @Test
+    void imageIsNullWhenTheWikiNamesTheFileSomethingElse() {
+        assertNull(IdentityCatalog.image("Cheery Chickies Class Captain Yi Sang", "[[File:YiSang-400025_portrait.png]]"));
+        assertNull(IdentityCatalog.image(null, "[[File:Anything Full.png]]"));
     }
 
     private static Map<String, byte[]> files(String... nameAndJson) {

@@ -39,7 +39,8 @@ class IdentityCatalog {
     record Stats(Integer rarity, Integer season, Double slash, Double pierce, Double blunt) {
     }
 
-    record SkillStats(String sin, String type, Integer power, String coinPower, Integer coins) {
+    // icon 은 위키 스킬 아이콘 URL · 위키에서 짝을 찾지 못하면 null
+    record SkillStats(String sin, String type, Integer power, String coinPower, Integer coins, String icon) {
     }
 
     // stats 는 위키에서 짝을 찾지 못하면 null
@@ -49,7 +50,9 @@ class IdentityCatalog {
     record Passive(int id, String name, String text, boolean support, String condition) {
     }
 
-    record Identity(int id, String title, String sinner, Stats stats, List<Skill> skills, List<Passive> passives) {
+    // image 는 위키 전신 일러스트 URL · 규칙에 맞는 파일이 없으면 null
+    record Identity(int id, String title, String sinner, String image, Stats stats, List<Skill> skills,
+                    List<Passive> passives) {
     }
 
     private static final Map<String, String> SINS = Map.of(
@@ -84,6 +87,11 @@ class IdentityCatalog {
     private static final Pattern LOCALIZE_FILE = Pattern.compile("(?:KR|EN)_(?:Personalities|Skills|Passive|Bufs|SkillTag).*\\.json");
 
     private static final URI WIKI_API = URI.create("https://limbuscompany.wiki.gg/api.php");
+
+    // 파일 이름만으로 실제 이미지를 되돌려주는 미디어위키 경로
+    private static final String FILE_PATH = "https://limbuscompany.wiki.gg/wiki/Special:FilePath/";
+
+    private static final Pattern SPACES = Pattern.compile("\\s+");
 
     // MediaWiki 는 문서 내용을 요청 하나에 50개까지 준다
     private static final int WIKI_BATCH = 50;
@@ -317,9 +325,33 @@ class IdentityCatalog {
             });
 
             result.add(new Identity(id, oneLine(kr.getString("title", "")), kr.getString("name", ""),
+                    page == null ? null : image(titles.get(id), page),
                     idPage == null ? null : stats(idPage), identitySkills, List.copyOf(identityPassives.values())));
         });
         return result;
+    }
+
+    // 이미지 파일명은 문서 제목에서 콜론이 빠진 꼴 · 인격 199건 중 197건이 둘 중 하나로 걸린다.
+    // 전신 일러스트가 없는 인격은 대기 스프라이트로 · 이름을 위키텍스트에서 확인하므로 추가 조회가 없다
+    static String image(String wikiTitle, String page) {
+        if (wikiTitle == null) {
+            return null;
+        }
+        String base = SPACES.matcher(wikiTitle.replace(":", " ")).replaceAll(" ").strip();
+        return Stream.of(" Full.png", " Idle Sprite.png")
+                .map(suffix -> base + suffix)
+                .filter(page::contains)
+                .findFirst()
+                .map(file -> fileUrl(file, ""))
+                .orElse(null);
+    }
+
+    // 파일 이름만으로 실제 이미지를 가리키는 주소
+    static String fileUrl(String name, String suffix) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+        return FILE_PATH + URLEncoder.encode(name.strip() + suffix, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
     static String wikiTitle(String title, String name) {
@@ -479,7 +511,9 @@ class IdentityCatalog {
     private static SkillStats skillStats(Map<String, String> skill) {
         String coinPower = skill.get("cpower");
         return new SkillStats(SINS.get(lower(skill.get("sin"))), TYPES.get(lower(skill.get("type"))), integer(skill.get("spower")),
-                coinPower == null || coinPower.isBlank() ? null : coinPower.replaceAll("\\s", ""), integer(skill.get("coin")));
+                coinPower == null || coinPower.isBlank() ? null : coinPower.replaceAll("\\s", ""), integer(skill.get("coin")),
+                // 아이콘 파라미터는 확장자 없는 파일 이름이다
+                fileUrl(skill.get("icon"), ".png"));
     }
 
     // 발동 조건. 위키에는 "5 Owned" · "3 Res." · 종류 없이 "3" 이 섞여 있다.
