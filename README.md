@@ -20,8 +20,8 @@
 -# 우울 6 보유
 -# 수치: Limbus Company Wiki (wiki.gg)
 
-[목록*] [1 떠난이에게 축하를] [2 남은자에게 엄숙한 애…] [3 이상으로 장례는 이상…]
-[4 관에서나비가날아오리라] [5 쏘아라.쏘으리로다.] [6 죽어가는나비를본다.] [7 구원의 손]
+[목록*] [1 떠난이에게 축하를] [2 남은자에게 엄숙한 애…] [3 이상으로 장례는 이상…] [4 관에서나비가날아오리라]
+[5 쏘아라.쏘으리로다.] [6 죽어가는나비를본다.] [7 구원의 손]
 ```
 
 `3` 을 누른 화면 — 왼쪽 색 띠는 그 스킬의 죄악 · 오른쪽 그림은 스킬 아이콘으로 바뀐다.
@@ -66,7 +66,7 @@
 
 인격 조회의 텍스트는 설치된 게임의 한국어 파일 · 수치 · 그림은 [림버스 컴퍼니 위키](https://limbuscompany.wiki.gg) — 인격 안에서
 영어 이름으로 맞춘 짝(인격 185 · 스킬 832 중 829). 그림은 위키 문서에 적힌 파일 이름 그대로 — 전신 일러스트 우선 · 대체는 대기
-스프라이트 · 인격 199 중 197. `LIMBUS_DIR` 없는 기동 — `/인격` 만 빠진 명령 목록.
+스프라이트 · 인격 185 중 183. `LIMBUS_DIR` 없는 기동 — `/인격` 만 빠진 명령 목록.
 
 ## 기술 스택
 
@@ -77,7 +77,7 @@
 | Data | 게임 설치 폴더의 한국어 · 영어 텍스트 + wiki.gg MediaWiki API — 24시간마다 다시 읽음 · 의존성 없이 `HttpClient` · JDA `DataObject` |
 | Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
 | OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
-| Test | JUnit 5 · Testcontainers · 60개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Test | JUnit 5 · Testcontainers · 64개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
