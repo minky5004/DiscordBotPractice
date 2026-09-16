@@ -2,7 +2,23 @@
 
 [![ci](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml)
 
-> 림버스 컴퍼니 엔케팔린 완충 시각 계산 · 그 시각 **봇 재시작에도 사라지지 않는** 멘션 예약 · Steam 공식 공지의 한국어 채널 중계
+> 림버스 컴퍼니 엔케팔린 완충 시각 계산 · 그 시각 **봇 재시작에도 사라지지 않는** 멘션 예약 · Steam 공식 공지의 한국어 채널 중계 · 인격 조회
+
+실제 `/인격 이름:엄숙한 애도` 응답 — 게임 한국어 원문에 위키 수치를 붙인 임베드.
+
+```
+[로보토미 E.G.O::엄숙한 애도] 이상 · ★★★
+내성  참격 ×1.0 · 관통 ×0.5 · 타격 ×2.0
+
+떠난이에게 축하를 · 오만 · 관통 · 위력 4 · 코인 +4 × 2
+  보유한 산나비·죽은나비가 10 이상이면, 합 위력 +1
+  [합 승리시] 침잠 횟수 2 증가
+  코인1 산나비·죽은나비 1 소모 · [적중시] 소모한 산나비·죽은나비만큼 나비 부여
+…
+패시브 · 쏘아라.쏘으리로다. · 우울 3 공명
+서포트 패시브 · 구원의 손 · 우울 6 보유
+수치: Limbus Company Wiki (wiki.gg)
+```
 
 6분에 1개씩 차는 엔케팔린의 완충 시각 암산 대체. 알림 봇에 흔히 붙는 결함 둘 — 재시작에 사라지는 예약 ·
 복구 뒤 두 번 가는 멘션. 원본은 PostgreSQL · 스케줄러 큐는 기동 때 되채우는 사본 · 꺼져 있던 사이 지난
@@ -18,6 +34,8 @@
 | `/엔케팔린취소` | 예약 해제 | `완충 알림 예약 취소` |
 | `/공지채널 채널:#공지 역할:@알림` | 서버 관리자 전용 · 공지 채널 · 멘션 역할 설정 | 설정 채널 · 역할 · 봇 권한 부족 경고 |
 | `/공지채널해제` | 공지 중계 해제 | `림버스 컴퍼니 공지 중계 해제` |
+| `/인격 이름:엄숙한 애도` | 인격 185종 조회 · 이름 칸은 자동완성 | 스킬 · 패시브 원문 + 수치 임베드 · 나만 보이는 응답 |
+| `/인격 이름:엄숙한 애도 공개:True` | 같은 조회 | 채널 공개 |
 
 유저당 예약 하나 — 재실행은 교체(PK 의 `ON CONFLICT`) · 서버 채널 전용 · 보관된 스레드처럼 캐시에서 빠진
 채널은 DM 으로.
@@ -28,15 +46,19 @@
 같은 채널로 가는 정기 점검 시작 · 종료 멘션 — 점검 시각의 출처는 정기 업데이트 공지 이미지 OCR(지난 1년 61건 중 60건 일치) ·
 못 읽은 주의 평소 시각 10:00 ~ 12:00.
 
+인격 조회의 텍스트는 설치된 게임의 한국어 파일 · 수치는 [림버스 컴퍼니 위키](https://limbuscompany.wiki.gg) — 인격 안에서
+영어 이름으로 맞춘 짝(인격 185 · 스킬 832 중 829). `LIMBUS_DIR` 없는 기동 — `/인격` 만 빠진 명령 목록.
+
 ## 기술 스택
 
 | 구분 | 기술 |
 |---|---|
 | Language | Java 25 |
 | Discord | JDA 6.5.0 — 슬래시 명령만 · 음성 모듈(opus-java) 제외 |
+| Data | 게임 설치 폴더의 한국어 · 영어 텍스트 + wiki.gg MediaWiki API — 24시간마다 다시 읽음 · 의존성 없이 `HttpClient` · JDA `DataObject` |
 | Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
 | OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
-| Test | JUnit 5 · Testcontainers · 34개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Test | JUnit 5 · Testcontainers · 48개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
@@ -48,7 +70,7 @@ JDK 25 · Docker 필요 · Gradle 은 wrapper 동봉 · 봇 토큰은 [Discord D
 
 ```bash
 git clone https://github.com/minky5004/DiscordBotPractice.git && cd DiscordBotPractice
-cp .env.example .env               # DISCORD_BOT_TOKEN · DB_PASSWORD(영숫자) 채우기
+cp .env.example .env               # DISCORD_BOT_TOKEN · DB_PASSWORD(영숫자) · LIMBUS_DIR(게임 폴더 · 선택) 채우기
 docker compose up -d --wait db     # → PostgreSQL healthy
 ./gradlew run                      # → "봇이 정상적으로 로그인되었습니다"
 ```
@@ -74,10 +96,12 @@ DiscordBotPractice/
 │   ├── ReminderStore.java            reminder 테이블 JDBC
 │   ├── NoticeListener.java           /공지채널 · /공지채널해제 · 10분 주기 Steam 조회 · BBCode → 임베드 · 이미지 첨부
 │   ├── NoticeStore.java              중계한 공지 기록 · 서버별 공지 채널 · 점검 시각 JDBC
-│   └── MaintenanceAlert.java         정기 업데이트 공지 제목의 날짜 · 이미지 OCR 시각 · 점검 시작 · 종료 멘션 예약
+│   ├── MaintenanceAlert.java         정기 업데이트 공지 제목의 날짜 · 이미지 OCR 시각 · 점검 시작 · 종료 멘션 예약
+│   ├── IdentityCatalog.java          게임 텍스트 · 위키 수치를 영어 이름으로 맞춘 인격 목록 · 24시간 갱신
+│   └── IdentityListener.java         /인격 · 자동완성 · 스킬 · 패시브 임베드
 ├── src/main/resources/db/migration/  스키마 이력
 ├── src/test/java/…/                  단위(계산 · 설정 파싱) · 통합(저장소 · 스케줄러 — 실제 PostgreSQL)
 ├── Dockerfile                        JDK 빌드 → tesseract 를 얹은 비루트 JRE 이미지
-├── compose.yaml                      PostgreSQL · 봇 (db 서비스를 가리키는 DB_URL · 빈 토큰의 기동 거부)
+├── compose.yaml                      PostgreSQL · 봇 (db 서비스를 가리키는 DB_URL · 빈 토큰의 기동 거부 · 게임 폴더 읽기 전용 마운트)
 └── .env.example                      토큰 · 비밀번호 자리를 비워 둔 견본
 ```
