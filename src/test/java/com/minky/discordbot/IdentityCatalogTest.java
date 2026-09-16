@@ -188,6 +188,30 @@ class IdentityCatalogTest {
     }
 
     @Test
+    void buildSurvivesRowsTheGameFilesDoNotLineUp() {
+        Map<String, byte[]> files = files(
+                // KR 텍스트가 EN 보다 먼저 들어온 인격 — 위키 제목을 만들 수 없다
+                "KR_Personalities.json", """
+                        {"dataList":[{"id":10101,"title":"LCB\\n수감자","name":"이상"},{"id":10999,"title":"새 인격","name":"이상"}]}""",
+                "EN_Personalities.json", """
+                        {"dataList":[{"id":10101,"title":"LCB\\nSinner","name":"Yi Sang"}]}""",
+                // levelList 가 없거나 빈 스킬 행
+                "KR_Skills.json", """
+                        {"dataList":[
+                          {"id":1010101,"levelList":[]},
+                          {"id":1010102},
+                          {"id":1010103,"levelList":[{"level":4,"name":"지우기","desc":"원문"}]}]}""",
+                "EN_Skills.json", """
+                        {"dataList":[{"id":1010103,"levelList":[{"level":4,"name":"Deflect"}]}]}""");
+
+        // 위키를 한 번도 받지 못한 상태의 불변 빈 맵
+        List<Identity> identities = IdentityCatalog.build(files, titles -> Map.of());
+
+        assertEquals(List.of(10101, 10999), identities.stream().map(Identity::id).toList());
+        assertEquals(List.of(new Skill(1010103, "지우기", "원문", null)), identities.getFirst().skills());
+    }
+
+    @Test
     void wikiPagesAreKeyedByRequestedTitle() {
         String json = """
                 {"batchcomplete":true,"query":{

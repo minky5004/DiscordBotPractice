@@ -140,6 +140,12 @@ class IdentityCatalog {
         try {
             wikiFailed = false;
             List<Identity> built = build(readLocalize(localize), this::fetchWiki);
+            if (built.isEmpty()) {
+                // 게임 패치가 파일 이름을 바꾸면 예외 없이 0건이 된다. 돌아가던 목록을 비우지 않는다.
+                log.warn("게임 폴더에서 인격을 하나도 읽지 못함 · 이전 목록 유지 · {}", localize);
+                next = RETRY_INTERVAL;
+                return;
+            }
             identities = built;
             log.info("인격 목록 {}개 · 수치 있는 인격 {}개", built.size(), built.stream().filter(identity -> identity.stats() != null).count());
             if (wikiFailed) {
@@ -264,7 +270,8 @@ class IdentityCatalog {
 
         List<Identity> result = new ArrayList<>();
         identities.forEach((id, kr) -> {
-            String page = pages.get(titles.get(id));
+            // EN 텍스트가 아직 없는 인격은 위키 제목을 만들 수 없다. Map.of() 는 null 조회에 NPE.
+            String page = pages.get(titles.getOrDefault(id, ""));
             Map<String, String> idPage = page == null ? null : templates(page, "IDPage").stream().findFirst().orElse(null);
             Map<String, Map<String, String>> wikiSkills = new LinkedHashMap<>();
             Map<String, Map<String, String>> wikiPassives = new LinkedHashMap<>();
@@ -286,6 +293,9 @@ class IdentityCatalog {
                     return;
                 }
                 DataObject top = lastLevel(skill);
+                if (top == null) {
+                    return;
+                }
                 Map<String, String> stats = wikiSkills.get(nameKey(englishSkillName(enSkills.get(skillId))));
                 identitySkills.add(new Skill(skillId, top.getString("name", ""), skillText(top, tags),
                         stats == null ? null : skillStats(stats)));
@@ -421,13 +431,15 @@ class IdentityCatalog {
         });
     }
 
+    // 동기화 최고 단계. levelList 가 없거나 빈 행은 그 스킬만 버린다 — 하나 때문에 갱신 전체를 멈추지 않는다.
     private static DataObject lastLevel(DataObject skill) {
-        DataArray levels = skill.getArray("levelList");
-        return levels.getObject(levels.length() - 1);
+        DataArray levels = skill.optArray("levelList").orElseGet(DataArray::empty);
+        return levels.isEmpty() ? null : levels.getObject(levels.length() - 1);
     }
 
     private static String englishSkillName(DataObject en) {
-        return en == null ? "" : lastLevel(en).getString("name", "");
+        DataObject top = en == null ? null : lastLevel(en);
+        return top == null ? "" : top.getString("name", "");
     }
 
     // 위키 스킬명에는 한자 병기(Chainstrike [<b>連擊</b>])가 붙기도 한다

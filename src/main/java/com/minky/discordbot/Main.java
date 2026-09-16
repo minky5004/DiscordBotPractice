@@ -10,6 +10,7 @@ import javax.sql.DataSource;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -86,7 +87,15 @@ public class Main {
             System.err.println(LIMBUS_DIR_KEY + " 값이 없어 /" + IdentityListener.COMMAND.getName() + " 을 등록하지 않습니다.");
             return null;
         }
-        IdentityCatalog catalog = new IdentityCatalog(Path.of(gameDir));
+        IdentityCatalog catalog;
+        try {
+            catalog = new IdentityCatalog(Path.of(gameDir));
+        } catch (InvalidPathException e) {
+            // 따옴표를 두른 경로 등. 로그인 뒤 자리라 여기서 터지면 명령 등록 없이 봇만 떠 있는다.
+            System.err.println(LIMBUS_DIR_KEY + " 경로를 읽지 못해 /" + IdentityListener.COMMAND.getName()
+                    + " 을 등록하지 않습니다 · " + gameDir + " · " + e.getMessage());
+            return null;
+        }
         if (!catalog.hasGameFiles()) {
             System.err.println(LIMBUS_DIR_KEY + " 경로에서 게임 텍스트를 찾지 못해 /" + IdentityListener.COMMAND.getName()
                     + " 을 등록하지 않습니다 · " + gameDir);
