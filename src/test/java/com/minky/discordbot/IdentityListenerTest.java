@@ -129,6 +129,35 @@ class IdentityListenerTest {
     }
 
     @Test
+    void defenceSkillsDoNotVoteForTheListColour() {
+        // 수비 스킬은 죄악이 없다 — 표에 끼워 두면 공격 스킬과 동수가 되어 회색이 이길 수 있다
+        Identity identity = new Identity(10101, "LCB 수감자", "이상", null, null,
+                List.of(new Skill(1010101, "분노 스킬", "원문", new SkillStats("분노", "타격", 2, "+3", 3, null)),
+                        new Skill(1010102, "수비", "원문", new SkillStats(null, "방어", 10, "+4", 1, null)),
+                        new Skill(1010103, "수비2", "원문", new SkillStats(null, "방어", 10, "+4", 1, null))),
+                List.of());
+
+        assertEquals(0xDC3545, IdentityListener.container(identity, 0).getAccentColorRaw());
+    }
+
+    @Test
+    void identityWithNoEntriesStillRenders() {
+        // 게임 파일에 스킬 행이 없는 인격 — 빈 TextDisplay 는 디스코드가 거부한다
+        Identity empty = new Identity(10101, "LCB 수감자", "이상", null, null, List.of(), List.of());
+
+        assertEquals(List.of("## [LCB 수감자] 이상", "-# 스킬 · 패시브를 읽지 못함"),
+                texts(IdentityListener.container(empty, 0)));
+        assertEquals(List.of(), IdentityListener.buttons(empty, 0));
+    }
+
+    @Test
+    void pageBeyondTheListFallsBackToIt() {
+        // 24시간 갱신이 항목을 줄이면 옛 메시지의 버튼이 범위 밖 번호를 들고 온다
+        assertEquals(texts(IdentityListener.container(SOLEMN_LAMENT, 0)),
+                texts(IdentityListener.container(SOLEMN_LAMENT, 9)));
+    }
+
+    @Test
     void identityWithoutWikiStatsDropsResistsAndCredit() {
         Identity identity = new Identity(10101, "LCB 수감자", "이상", null, null,
                 List.of(new Skill(1010101, "지우기", "원문", null)),
@@ -224,7 +253,17 @@ class IdentityListenerTest {
 
         assertEquals(SOLEMN_LAMENT, IdentityListener.find(identities, "10110"));
         assertEquals(SOLEMN_LAMENT, IdentityListener.find(identities, "엄숙"));
-        assertEquals(null, IdentityListener.find(identities, "없는 인격"));
+        assertNull(IdentityListener.find(identities, "없는 인격"));
+    }
+
+    @Test
+    void buttonLookupNeverFallsBackToTextSearch() {
+        // 버튼 ID 의 인격이 목록에서 빠졌을 때 · 글자 검색까지 타면 숫자를 품은 다른 인격이 걸린다
+        Identity decoy = new Identity(10101, "10110 번 수감자", "이상", null, null, List.of(), List.of());
+        List<Identity> identities = List.of(decoy);
+
+        assertEquals(decoy, IdentityListener.find(identities, "10110"));
+        assertNull(IdentityListener.byId(identities, "10110"));
     }
 
     @Test

@@ -25,6 +25,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -103,7 +104,8 @@ public class IdentityListener extends ListenerAdapter {
         if (parts.length != 3 || !COMMAND.getName().equals(parts[0])) {
             return;
         }
-        Identity identity = find(catalog.identities(), parts[1]);
+        // 버튼은 ID 로만 찾는다 · find 의 글자 검색까지 타면 목록에서 빠진 인격이 엉뚱한 인격으로 바꿔치기된다
+        Identity identity = byId(catalog.identities(), parts[1]);
         if (identity == null) {
             // 24시간마다 다시 읽으므로 오래된 메시지의 인격이 목록에서 빠질 수 있다
             event.reply("인격 목록에 없는 항목 · 명령을 다시 실행").setEphemeral(true).queue();
@@ -118,14 +120,16 @@ public class IdentityListener extends ListenerAdapter {
         List<Entry> entries = entries(identity);
         List<TextDisplay> heading = new ArrayList<>();
         List<ContainerChildComponent> body = new ArrayList<>();
-        if (page == 0) {
+        // 목록에서 벗어난 페이지는 목록으로 · 24시간 갱신이 항목을 줄이면 옛 메시지의 버튼이 여기로 온다
+        if (page < 1 || page > entries.size()) {
             heading.add(TextDisplay.of("## " + title(identity)));
             String resists = resists(identity.stats());
             if (resists != null) {
                 heading.add(TextDisplay.of(resists));
             }
-            body.add(TextDisplay.of(list(entries)));
-        } else if (page <= entries.size()) {
+            // 디스코드는 빈 TextDisplay 를 거부한다 · 게임 파일에 스킬 행이 없는 인격
+            body.add(TextDisplay.of(entries.isEmpty() ? "-# 스킬 · 패시브를 읽지 못함" : list(entries)));
+        } else {
             // 상세에서는 그 스킬이 주인공 · 어느 인격인지는 썸네일과 색 띠가 이미 말한다
             Entry entry = entries.get(page - 1);
             heading.add(TextDisplay.of("### " + entry.name()));
@@ -140,12 +144,13 @@ public class IdentityListener extends ListenerAdapter {
         if (thumbnail == null) {
             children.addAll(heading);
         } else {
-            String alt = page > 0 && page <= entries.size() ? entries.get(page - 1).name() : label(identity);
+            String alt = page >= 1 && page <= entries.size() ? entries.get(page - 1).name() : label(identity);
             children.add(Section.of(Thumbnail.fromUrl(thumbnail).withDescription(alt), heading));
         }
         children.add(Separator.createDivider(Separator.Spacing.SMALL));
         children.addAll(body);
-        if (identity.stats() != null) {
+        // 수치뿐 아니라 그림도 위키에서 온다 — 둘 중 하나라도 실렸으면 출처를 밝힌다
+        if (identity.stats() != null || thumbnail != null) {
             children.add(TextDisplay.of(WIKI_CREDIT));
         }
         children.addAll(rows(identity, page));
@@ -221,11 +226,14 @@ public class IdentityListener extends ListenerAdapter {
     // 상세는 그 스킬의 죄악 · 목록은 가장 많이 쓰인 죄악
     private static int color(Identity identity, int page) {
         List<Skill> skills = identity.skills();
-        if (page > 0 && page <= skills.size()) {
+        if (page >= 1 && page <= skills.size()) {
             return sinColor(skills.get(page - 1));
         }
+        // 죄악 없는 수비 스킬이 표에 끼면 회색이 이길 수 있다 · 같은 수면 앞선 스킬 쪽으로 (LinkedHashMap · max 는 동수에 첫 값 유지)
         return skills.stream()
-                .collect(Collectors.groupingBy(IdentityListener::sinColor, Collectors.counting()))
+                .map(IdentityListener::sinColor)
+                .filter(color -> color != DEFAULT_COLOR)
+                .collect(Collectors.groupingBy(color -> color, LinkedHashMap::new, Collectors.counting()))
                 .entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
@@ -239,10 +247,14 @@ public class IdentityListener extends ListenerAdapter {
 
     // 자동완성 후보를 고르면 값이 인격 ID, 직접 친 글자면 첫 일치
     static Identity find(List<Identity> identities, String query) {
+        Identity byId = byId(identities, query);
+        return byId != null ? byId : search(identities, query).stream().findFirst().orElse(null);
+    }
+
+    static Identity byId(List<Identity> identities, String id) {
         return identities.stream()
-                .filter(identity -> String.valueOf(identity.id()).equals(query))
+                .filter(identity -> String.valueOf(identity.id()).equals(id))
                 .findFirst()
-                .or(() -> search(identities, query).stream().findFirst())
                 .orElse(null);
     }
 
