@@ -322,7 +322,7 @@ public class NoticeListener extends ListenerAdapter {
         return cut(text, MessageEmbed.DESCRIPTION_MAX_LENGTH);
     }
 
-    private static String cut(String text, int limit) {
+    static String cut(String text, int limit) {
         return text.length() <= limit ? text : text.substring(0, limit - 1) + "…";
     }
 
