@@ -44,17 +44,17 @@ public class IdentityListener extends ListenerAdapter {
     private static final int ROW_SIZE = 5;
 
     // 컨테이너 색 띠 · 스킬의 죄악을 그대로 쓴다
-    private static final Map<String, Integer> SIN_COLORS = Map.of(
+    static final Map<String, Integer> SIN_COLORS = Map.of(
             "분노", 0xDC3545, "색욕", 0xE8622C, "나태", 0xE0B032, "탐식", 0x4CA64C,
             "우울", 0x2F8F9C, "오만", 0x3A6FD8, "질투", 0x8B4FD8);
 
-    private static final int DEFAULT_COLOR = 0x5A5A66;
+    static final int DEFAULT_COLOR = 0x5A5A66;
 
     // 한 메시지의 컴포넌트 텍스트 합계가 4000자 · 한 덩이가 그 절반을 넘지 않게 자른다
-    private static final int TEXT_LIMIT = 2000;
+    static final int TEXT_LIMIT = 2000;
 
     // 버튼은 라벨만큼 넓어진다 · 한 행에 다섯이 들어가게 이름을 자른다
-    private static final int LABEL_WIDTH = 14;
+    static final int LABEL_WIDTH = 14;
 
     static final SlashCommandData COMMAND = Commands.slash("인격", "림버스 컴퍼니 인격의 스킬 · 패시브 조회")
             .addOptions(
@@ -153,7 +153,7 @@ public class IdentityListener extends ListenerAdapter {
         if (identity.stats() != null || thumbnail != null) {
             children.add(TextDisplay.of(WIKI_CREDIT));
         }
-        children.addAll(rows(identity, page));
+        children.addAll(rows(buttons(identity, page)));
         return Container.of(children).withAccentColor(color(identity, page));
     }
 
@@ -214,8 +214,8 @@ public class IdentityListener extends ListenerAdapter {
         return number + " " + (name.startsWith("패시브") || name.startsWith("서포트 패시브") ? name.substring(mark + 3) : name);
     }
 
-    private static List<ActionRow> rows(Identity identity, int page) {
-        List<Button> buttons = buttons(identity, page);
+    // 검색 결과 화면도 같은 한도로 버튼을 쪼갠다
+    static List<ActionRow> rows(List<Button> buttons) {
         List<ActionRow> rows = new ArrayList<>();
         for (int i = 0; i < buttons.size(); i += ROW_SIZE) {
             rows.add(ActionRow.of(buttons.subList(i, Math.min(buttons.size(), i + ROW_SIZE))));

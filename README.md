@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml)
 
-> 림버스 컴퍼니 엔케팔린 완충 시각 계산 · 그 시각 **봇 재시작에도 사라지지 않는** 멘션 예약 · Steam 공식 공지의 한국어 채널 중계 · 인격 조회
+> 림버스 컴퍼니 엔케팔린 완충 시각 계산 · 그 시각 **봇 재시작에도 사라지지 않는** 멘션 예약 · Steam 공식 공지의 한국어 채널 중계 · 인격 조회 · 조건 검색
 
 실제 `/인격 이름:엄숙한 애도` 응답 — 게임 한국어 원문에 위키 수치 · 일러스트를 붙인 컨테이너.
 첫 화면은 훑는 자리, 버튼 하나가 스킬 하나.
@@ -52,8 +52,9 @@
 | `/엔케팔린취소` | 예약 해제 | `완충 알림 예약 취소` |
 | `/공지채널 채널:#공지 역할:@알림` | 서버 관리자 전용 · 공지 채널 · 멘션 역할 설정 | 설정 채널 · 역할 · 봇 권한 부족 경고 |
 | `/공지채널해제` | 공지 중계 해제 | `림버스 컴퍼니 공지 중계 해제` |
-| `/인격 이름:엄숙한 애도` | 인격 185종 조회 · 이름 칸은 자동완성 | 스킬 · 패시브 목록 · 버튼으로 하나씩 · 나만 보이는 응답 |
+| `/인격 이름:엄숙한 애도` | 인격 187종 조회 · 이름 칸은 자동완성 | 스킬 · 패시브 목록 · 버튼으로 하나씩 · 나만 보이는 응답 |
 | `/인격 이름:엄숙한 애도 공개:True` | 같은 조회 | 채널 공개 |
+| `/인격검색 죄악:분노 유형:관통` | 조건에 맞는 인격 목록 · 조건 다섯 전부 선택 | 번호 목록 · 버튼 하나가 인격 상세 |
 
 유저당 예약 하나 — 재실행은 교체(PK 의 `ON CONFLICT`) · 서버 채널 전용 · 보관된 스레드처럼 캐시에서 빠진
 채널은 DM 으로.
@@ -65,8 +66,12 @@
 못 읽은 주의 평소 시각 10:00 ~ 12:00.
 
 인격 조회의 텍스트는 설치된 게임의 한국어 파일 · 수치 · 그림은 [림버스 컴퍼니 위키](https://limbuscompany.wiki.gg) — 인격 안에서
-영어 이름으로 맞춘 짝(인격 185 · 스킬 832 중 829). 그림은 위키 문서에 적힌 파일 이름 그대로 — 전신 일러스트 우선 · 대체는 대기
-스프라이트 · 인격 185 중 183. `LIMBUS_DIR` 없는 기동 — `/인격` 만 빠진 명령 목록.
+영어 이름으로 맞춘 짝(인격 187 · 스킬 842 중 829). 그림은 위키 문서에 적힌 파일 이름 그대로 — 전신 일러스트 우선 · 대체는 대기
+스프라이트 · 인격 187 중 185. `LIMBUS_DIR` 없는 기동 — 인격 명령 둘이 빠진 목록.
+
+검색의 죄악 · 유형은 스킬 단위 — 분노 스킬 따로 · 관통 스킬 따로인 인격이 빠진 목록. 수감자 · 등급 · 시즌은 인격 단위 ·
+조건끼리는 AND. 한 화면은 등급 높은 순 앞 25건 — 버튼 한도와 같은 수 · 넘는 만큼은 조건을 더 주는 쪽. 결과 버튼이
+여는 곳은 `/인격` 상세 화면.
 
 ## 기술 스택
 
@@ -77,7 +82,7 @@
 | Data | 게임 설치 폴더의 한국어 · 영어 텍스트 + wiki.gg MediaWiki API — 24시간마다 다시 읽음 · 의존성 없이 `HttpClient` · JDA `DataObject` |
 | Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
 | OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
-| Test | JUnit 5 · Testcontainers · 64개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Test | JUnit 5 · Testcontainers · 76개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
@@ -117,7 +122,8 @@ DiscordBotPractice/
 │   ├── NoticeStore.java              중계한 공지 기록 · 서버별 공지 채널 · 점검 시각 JDBC
 │   ├── MaintenanceAlert.java         정기 업데이트 공지 제목의 날짜 · 이미지 OCR 시각 · 점검 시작 · 종료 멘션 예약
 │   ├── IdentityCatalog.java          게임 텍스트 · 위키 수치 · 그림 주소를 영어 이름으로 맞춘 인격 목록 · 24시간 갱신
-│   └── IdentityListener.java         /인격 · 자동완성 · 컨테이너 · 버튼 페이지 · 죄악 색 띠
+│   ├── IdentityListener.java         /인격 · 자동완성 · 컨테이너 · 버튼 페이지 · 죄악 색 띠
+│   └── IdentitySearchListener.java   /인격검색 · 스킬 단위 조건 · /인격 상세로 잇는 결과 버튼
 ├── src/main/resources/db/migration/  스키마 이력
 ├── src/test/java/…/                  단위(계산 · 설정 파싱) · 통합(저장소 · 스케줄러 — 실제 PostgreSQL)
 ├── Dockerfile                        JDK 빌드 → tesseract 를 얹은 비루트 JRE 이미지
