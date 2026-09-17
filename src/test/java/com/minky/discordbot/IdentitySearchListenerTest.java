@@ -150,7 +150,14 @@ class IdentitySearchListenerTest {
         Container container = IdentitySearchListener.container(many, NONE);
 
         assertEquals(25, buttons(container).size());
-        assertEquals("-# 30건 중 25건 · 조건을 더 좁히세요", texts(container).get(3));
+        assertEquals("-# 30건 중 등급 높은 앞 25건 · 수감자 · 시즌으로 더 좁히기", texts(container).get(3));
+    }
+
+    // 카탈로그 순서(게임 ID)를 그대로 자르면 넓은 검색이 앞 두 수감자만 내놓는다
+    @Test
+    void higherRarityComesFirstAndMissingStatsLast() {
+        assertEquals(List.of(10101, 10201, 10901), ids(IdentitySearchListener.search(
+                List.of(NO_STATS, BOTH, SPLIT), NONE)));
     }
 
     @Test

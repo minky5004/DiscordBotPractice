@@ -18,6 +18,7 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 // 조건으로 인격 목록 좁히기 · 결과 버튼은 /인격 상세로 그대로 이어진다
@@ -50,7 +51,7 @@ public class IdentitySearchListener extends ListenerAdapter {
     private static final int MIN_SEASON = 0;
     private static final int MAX_SEASON = 99;
 
-    static final SlashCommandData COMMAND = Commands.slash("인격검색", "죄악 · 유형 · 수감자 · 등급으로 인격 목록 좁히기")
+    static final SlashCommandData COMMAND = Commands.slash("인격검색", "죄악 · 유형 · 수감자 · 등급 · 시즌으로 인격 목록 좁히기")
             .addOptions(
                     // 죄악과 유형은 스킬 하나가 둘 다 만족해야 걸린다 — 상성은 그 단위로 본다
                     choice(SIN, "스킬의 죄악", SINS),
@@ -94,8 +95,14 @@ public class IdentitySearchListener extends ListenerAdapter {
                 .queue();
     }
 
+    // 카탈로그 순서는 게임 ID 순이라 수감자별로 뭉쳐 있다 — 그대로 앞 25건을 자르면 넓은 검색이 앞 두 수감자만 내놓는다
+    private static final Comparator<Identity> ORDER = Comparator
+            .comparing((Identity identity) -> identity.stats() == null ? null : identity.stats().rarity(),
+                    Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(Identity::id);
+
     static List<Identity> search(List<Identity> identities, Filter filter) {
-        return identities.stream().filter(identity -> matches(identity, filter)).toList();
+        return identities.stream().filter(identity -> matches(identity, filter)).sorted(ORDER).toList();
     }
 
     // 수감자 · 등급 · 시즌은 인격 단위 · 죄악 · 유형은 스킬 단위
@@ -139,7 +146,8 @@ public class IdentitySearchListener extends ListenerAdapter {
         List<Identity> shown = results.subList(0, Math.min(results.size(), MAX_RESULTS));
         children.add(TextDisplay.of(list(shown)));
         if (results.size() > shown.size()) {
-            children.add(TextDisplay.of("-# " + results.size() + "건 중 " + shown.size() + "건 · 조건을 더 좁히세요"));
+            children.add(TextDisplay.of(
+                    "-# " + results.size() + "건 중 등급 높은 앞 " + shown.size() + "건 · 수감자 · 시즌으로 더 좁히기"));
         }
         children.addAll(IdentityListener.rows(buttons(shown)));
         return Container.of(children).withAccentColor(color(filter));
