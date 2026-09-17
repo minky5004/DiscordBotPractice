@@ -28,8 +28,11 @@ public class Main {
     private static final String DB_USER_KEY = "DB_USER";
     private static final String DB_PASSWORD_KEY = "DB_PASSWORD";
 
-    // 게임 설치 폴더. 없으면 /인격 없이 뜬다.
+    // 게임 설치 폴더. 없으면 인격 명령 없이 뜬다.
     private static final String LIMBUS_DIR_KEY = "LIMBUS_DIR";
+
+    private static final String IDENTITY_COMMANDS =
+            "/" + IdentityListener.COMMAND.getName() + " · /" + IdentitySearchListener.COMMAND.getName();
 
     private static final List<String> REQUIRED_KEYS = List.of(TOKEN_KEY, DB_URL_KEY, DB_USER_KEY, DB_PASSWORD_KEY);
 
@@ -73,18 +76,19 @@ public class Main {
         IdentityCatalog identities = identityCatalog(env.getProperty(LIMBUS_DIR_KEY, ""));
         if (identities != null) {
             identities.start();
-            jda.addEventListener(new IdentityListener(identities));
+            jda.addEventListener(new IdentityListener(identities), new IdentitySearchListener(identities));
             commands.add(IdentityListener.COMMAND);
+            commands.add(IdentitySearchListener.COMMAND);
         }
         jda.updateCommands().addCommands(commands).complete();
 
         System.out.println("봇이 정상적으로 로그인되었습니다");
     }
 
-    // 게임 텍스트가 없으면 /인격 은 등록하지 않는다. 나머지 명령은 그대로 뜬다.
+    // 게임 텍스트가 없으면 인격 명령은 등록하지 않는다. 나머지 명령은 그대로 뜬다.
     private static IdentityCatalog identityCatalog(String gameDir) {
         if (gameDir.isBlank()) {
-            System.err.println(LIMBUS_DIR_KEY + " 값이 없어 /" + IdentityListener.COMMAND.getName() + " 을 등록하지 않습니다.");
+            System.err.println(LIMBUS_DIR_KEY + " 값이 없어 " + IDENTITY_COMMANDS + " 을 등록하지 않습니다.");
             return null;
         }
         IdentityCatalog catalog;
@@ -92,12 +96,12 @@ public class Main {
             catalog = new IdentityCatalog(Path.of(gameDir));
         } catch (InvalidPathException e) {
             // 따옴표를 두른 경로 등. 로그인 뒤 자리라 여기서 터지면 명령 등록 없이 봇만 떠 있는다.
-            System.err.println(LIMBUS_DIR_KEY + " 경로를 읽지 못해 /" + IdentityListener.COMMAND.getName()
+            System.err.println(LIMBUS_DIR_KEY + " 경로를 읽지 못해 " + IDENTITY_COMMANDS
                     + " 을 등록하지 않습니다 · " + gameDir + " · " + e.getMessage());
             return null;
         }
         if (!catalog.hasGameFiles()) {
-            System.err.println(LIMBUS_DIR_KEY + " 경로에서 게임 텍스트를 찾지 못해 /" + IdentityListener.COMMAND.getName()
+            System.err.println(LIMBUS_DIR_KEY + " 경로에서 게임 텍스트를 찾지 못해 " + IDENTITY_COMMANDS
                     + " 을 등록하지 않습니다 · " + gameDir);
             return null;
         }
