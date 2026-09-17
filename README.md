@@ -70,7 +70,8 @@
 스프라이트 · 인격 187 중 185. `LIMBUS_DIR` 없는 기동 — 인격 명령 둘이 빠진 목록.
 
 검색의 죄악 · 유형은 스킬 단위 — 분노 스킬 따로 · 관통 스킬 따로인 인격이 빠진 목록. 수감자 · 등급 · 시즌은 인격 단위 ·
-조건끼리는 AND · 아무 조건 없는 실행은 전체 목록. 결과 버튼이 여는 곳은 `/인격` 상세 화면.
+조건끼리는 AND. 한 화면은 등급 높은 순 앞 25건 — 버튼 한도와 같은 수 · 넘는 만큼은 조건을 더 주는 쪽. 결과 버튼이
+여는 곳은 `/인격` 상세 화면.
 
 ## 기술 스택
 
@@ -81,7 +82,7 @@
 | Data | 게임 설치 폴더의 한국어 · 영어 텍스트 + wiki.gg MediaWiki API — 24시간마다 다시 읽음 · 의존성 없이 `HttpClient` · JDA `DataObject` |
 | Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
 | OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
-| Test | JUnit 5 · Testcontainers · 75개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Test | JUnit 5 · Testcontainers · 76개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
