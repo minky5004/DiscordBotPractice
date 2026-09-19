@@ -91,7 +91,7 @@ class IdentityCatalog {
     // 게임 설치 폴더 기준
     private static final String LOCALIZE = "LimbusCompany_Data/Assets/Resources_moved/Localize";
 
-    private static final Pattern LOCALIZE_FILE = Pattern.compile("(?:KR|EN)_(?:Personalities|Skills|Passive|Bufs|SkillTag|BattleKeywords|Egos).*\\.json");
+    private static final Pattern LOCALIZE_FILE = Pattern.compile("(?:KR|EN)_(?:Personalities|Skills|Passive|Bufs|SkillTag|BattleKeywords|Egos|EGOgift).*\\.json");
 
     // 전투 공통 사전 · 이벤트 · 거울 던전 변형 파일은 같은 ID 에 다른 설명을 두기도 해 공통 쪽이 우선
     private static final String KEYWORD_FILE = "KR_BattleKeywords.json";
@@ -138,6 +138,8 @@ class IdentityCatalog {
 
     private volatile List<EgoCatalog.Ego> egos = List.of();
 
+    private volatile List<GiftCatalog.Gift> gifts = List.of();
+
     // 위키가 실패하면 마지막으로 받은 문서로 조립한다. 갱신 스레드에서만 만진다.
     private Map<String, String> pages = Map.of();
 
@@ -161,6 +163,10 @@ class IdentityCatalog {
 
     List<EgoCatalog.Ego> egos() {
         return egos;
+    }
+
+    List<GiftCatalog.Gift> gifts() {
+        return gifts;
     }
 
     void start() {
@@ -195,9 +201,17 @@ class IdentityCatalog {
             } else {
                 egos = builtEgos;
             }
-            log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개 · E.G.O {}개 · 수치 있는 E.G.O {}개", built.size(),
-                    built.stream().filter(identity -> identity.stats() != null).count(), keywords.size(),
-                    egos.size(), egos.stream().filter(EgoCatalog.Ego::wiki).count());
+            List<GiftCatalog.Gift> builtGifts = GiftCatalog.build(files, this::fetchWiki);
+            if (builtGifts.isEmpty()) {
+                log.warn("게임 폴더에서 기프트를 하나도 읽지 못함 · 이전 목록 유지 · {}", localize);
+                next = RETRY_INTERVAL;
+            } else {
+                gifts = builtGifts;
+            }
+            log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개 · E.G.O {}개 · 수치 있는 E.G.O {}개 · 기프트 {}개 · 수치 있는 기프트 {}개",
+                    built.size(), built.stream().filter(identity -> identity.stats() != null).count(), keywords.size(),
+                    egos.size(), egos.stream().filter(EgoCatalog.Ego::wiki).count(),
+                    gifts.size(), gifts.stream().filter(GiftCatalog.Gift::wiki).count());
             if (wikiFailed) {
                 next = RETRY_INTERVAL;
             }
