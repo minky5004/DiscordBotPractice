@@ -1,6 +1,7 @@
 package com.minky.discordbot;
 
 import com.minky.discordbot.IdentityCatalog.Identity;
+import com.minky.discordbot.IdentityCatalog.Keyword;
 import com.minky.discordbot.IdentityCatalog.Passive;
 import com.minky.discordbot.IdentityCatalog.Skill;
 import com.minky.discordbot.IdentityCatalog.SkillStats;
@@ -246,6 +247,51 @@ class IdentityCatalogTest {
         assertNull(IdentityCatalog.image("Cheery Chickies Class Captain Yi Sang", "[[File:YiSang-400025_portrait.png]]"));
         assertNull(IdentityCatalog.image(null, "[[File:Anything Full.png]]"));
     }
+
+    @Test
+    void keywordsKeepOnlyThoseUsedByIdentitiesAndEgosFromEveryKeywordFile() {
+        Map<String, byte[]> files = files(
+                "KR_BattleKeywords.json", """
+                        {"dataList":[
+                          {"id":"Burn","name":"화상","desc":"옛 화상"},
+                          {"id":"Combustion","name":"화상","desc":"턴 종료 시, <color=#e30000>효과 위력</color>만큼 피해"},
+                          {"id":"Sinking","name":"침잠","desc":"피격 시 정신력 피해"},
+                          {"id":"Taunt","name":"도발","desc":""},
+                          {"id":"EnemyOnly","name":"적 전용","desc":"적 스킬에만"},
+                          {"id":"ResentmentIshmael","name":"중지 - 원한","desc":"최댓값: 15"},
+                          {"id":"ResentmentSpiderOutis","name":"중지 - 원한","desc":"최댓값: 15"}]}""",
+                "KR_BattleKeywords-a1c.json", """
+                        {"dataList":[
+                          {"id":"Sinking","name":"침잠","desc":"이벤트판 설명"},
+                          {"id":"SinkingWhite","name":"나비","desc":"특수 침잠"},
+                          {"id":"EventOnly","name":"이벤트 전용","desc":"이벤트 전투에만"}]}""",
+                "KR_Personalities.json", """
+                        {"dataList":[
+                          {"id":10101,"title":"LCB 수감자","name":"이상"},
+                          {"id":10110,"title":"로보토미 E.G.O::\\n엄숙한 애도","name":"이상"},
+                          {"id":10201,"title":"LCB 수감자","name":"파우스트"}]}""",
+                "KR_Egos.json", """
+                        {"dataList":[{"id":20103,"name":"소망석"}]}""",
+                "KR_Skills.json", """
+                        {"dataList":[
+                          {"id":1011001,"levelList":[{"desc":"[Combustion] [Taunt] [ResentmentIshmael]"}]},
+                          {"id":1020101,"levelList":[{"desc":"[ResentmentSpiderOutis]"}]},
+                          {"id":80000001,"levelList":[{"desc":"[EnemyOnly]"}]}]}""",
+                "KR_Skills_Ego_Personality-01.json", """
+                        {"dataList":[{"id":2010311,"levelList":[{"desc":"[Combustion] 3 부여"}]}]}""",
+                "KR_Passive.json", """
+                        {"dataList":[{"id":1011011,"desc":"[Sinking] [SinkingWhite] 1 부여"}]}""");
+
+        String solemnLament = "[로보토미 E.G.O::엄숙한 애도] 이상";
+        assertEquals(List.of(
+                        new Keyword("Combustion", "화상", "턴 종료 시, 효과 위력만큼 피해", List.of(solemnLament, "E.G.O 소망석 · 이상")),
+                        new Keyword("Sinking", "침잠", "피격 시 정신력 피해", List.of(solemnLament)),
+                        // 이름 · 설명이 같은 두 ID 는 하나로 · 사용처는 합친다
+                        new Keyword("ResentmentIshmael", "중지 - 원한", "최댓값: 15", List.of(solemnLament, "[LCB 수감자] 파우스트")),
+                        new Keyword("SinkingWhite", "나비", "특수 침잠", List.of(solemnLament))),
+                IdentityCatalog.keywords(files));
+    }
+
 
     private static Map<String, byte[]> files(String... nameAndJson) {
         Map<String, byte[]> files = new LinkedHashMap<>();
