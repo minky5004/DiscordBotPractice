@@ -18,11 +18,14 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -55,6 +58,10 @@ class IdentityCatalog {
                     List<Passive> passives) {
     }
 
+    // users 는 이 키워드를 쓰는 인격 · E.G.O 이름 · 인격이 먼저, 각자 게임 ID 순
+    record Keyword(String id, String name, String desc, List<String> users) {
+    }
+
     private static final Map<String, String> SINS = Map.of(
             "wrath", "분노", "lust", "색욕", "sloth", "나태", "gluttony", "탐식", "gloom", "우울", "pride", "오만", "envy", "질투");
 
@@ -84,7 +91,12 @@ class IdentityCatalog {
     // 게임 설치 폴더 기준
     private static final String LOCALIZE = "LimbusCompany_Data/Assets/Resources_moved/Localize";
 
-    private static final Pattern LOCALIZE_FILE = Pattern.compile("(?:KR|EN)_(?:Personalities|Skills|Passive|Bufs|SkillTag).*\\.json");
+    private static final Pattern LOCALIZE_FILE = Pattern.compile("(?:KR|EN)_(?:Personalities|Skills|Passive|Bufs|SkillTag|BattleKeywords|Egos).*\\.json");
+
+    // 전투 공통 사전 · 이벤트 · 거울 던전 변형 파일은 같은 ID 에 다른 설명을 두기도 해 공통 쪽이 우선
+    private static final String KEYWORD_FILE = "KR_BattleKeywords.json";
+
+    private static final String KEYWORD_PREFIX = "KR_BattleKeywords";
 
     private static final URI WIKI_API = URI.create("https://limbuscompany.wiki.gg/api.php");
 
@@ -122,6 +134,8 @@ class IdentityCatalog {
     // 조회는 JDA 스레드, 교체는 갱신 스레드. 목록을 통째로 바꿔 끼운다.
     private volatile List<Identity> identities = List.of();
 
+    private volatile List<Keyword> keywords = List.of();
+
     // 위키가 실패하면 마지막으로 받은 문서로 조립한다. 갱신 스레드에서만 만진다.
     private Map<String, String> pages = Map.of();
 
@@ -139,6 +153,10 @@ class IdentityCatalog {
         return identities;
     }
 
+    List<Keyword> keywords() {
+        return keywords;
+    }
+
     void start() {
         executor.execute(this::refresh);
     }
@@ -147,7 +165,8 @@ class IdentityCatalog {
         Duration next = REFRESH_INTERVAL;
         try {
             wikiFailed = false;
-            List<Identity> built = build(readLocalize(localize), this::fetchWiki);
+            Map<String, byte[]> files = readLocalize(localize);
+            List<Identity> built = build(files, this::fetchWiki);
             if (built.isEmpty()) {
                 // 게임 패치가 파일 이름을 바꾸면 예외 없이 0건이 된다. 돌아가던 목록을 비우지 않는다.
                 log.warn("게임 폴더에서 인격을 하나도 읽지 못함 · 이전 목록 유지 · {}", localize);
@@ -155,7 +174,9 @@ class IdentityCatalog {
                 return;
             }
             identities = built;
-            log.info("인격 목록 {}개 · 수치 있는 인격 {}개", built.size(), built.stream().filter(identity -> identity.stats() != null).count());
+            keywords = keywords(files);
+            log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개", built.size(),
+                    built.stream().filter(identity -> identity.stats() != null).count(), keywords.size());
             if (wikiFailed) {
                 next = RETRY_INTERVAL;
             }
@@ -258,8 +279,7 @@ class IdentityCatalog {
 
     static List<Identity> build(Map<String, byte[]> files, Function<List<String>, Map<String, String>> wiki) {
         Map<Integer, DataObject> identities = rows(files, "KR_Personalities");
-        // 9999 는 지원 유닛, 40501 은 외형 투영. 인격만 남긴다.
-        identities.keySet().removeIf(id -> id < 10000 || id >= 20000);
+        identities.keySet().removeIf(id -> !isIdentity(id));
         Map<Integer, DataObject> enIdentities = rows(files, "EN_Personalities");
         Map<Integer, DataObject> skills = rows(files, "KR_Skills");
         Map<Integer, DataObject> enSkills = rows(files, "EN_Skills");
@@ -330,6 +350,74 @@ class IdentityCatalog {
         });
         return result;
     }
+
+    // 9999 는 지원 유닛, 40501 은 외형 투영. 스킬 · 패시브 ID 는 인격 ID × 100 + n.
+    private static boolean isIdentity(int id) {
+        return id >= 10000 && id < 20000;
+    }
+
+    // E.G.O 는 2SSNN · SS 가 수감자 번호 (인격 1SSNN 과 같은 자리). 201011 같은 여섯 자리는 연출 전용 장비.
+    private static boolean isEgo(int id) {
+        return id >= 20000 && id < 30000;
+    }
+
+    // 인격 · E.G.O 의 스킬 · 패시브 본문에 [ID] 로 나오는 키워드만 · 옛 메커니즘(Burn)이 지금 것(Combustion)과 이름이 겹치고
+    // 이벤트 파일엔 그 전투에만 쓰는 키워드가 섞여 있다.
+    static List<Keyword> keywords(Map<String, byte[]> files) {
+        Map<Integer, DataObject> identities = rows(files, "KR_Personalities");
+        Map<Integer, String> sinners = new HashMap<>();
+        identities.forEach((id, row) -> sinners.putIfAbsent(id / 100 % 100, row.getString("name", "")));
+        Map<Integer, DataObject> egos = rows(files, "KR_Egos");
+        Map<Integer, String> owners = new TreeMap<>();
+        identities.forEach((id, row) -> {
+            if (isIdentity(id)) {
+                owners.put(id, "[" + oneLine(row.getString("title", "")) + "] " + row.getString("name", ""));
+            }
+        });
+        egos.forEach((id, row) -> {
+            if (isEgo(id)) {
+                owners.put(id, "E.G.O " + row.getString("name", "") + " · " + sinners.getOrDefault(id / 100 % 100, "?"));
+            }
+        });
+
+        // 키워드 ID → 쓰는 인격 · E.G.O ID. KR_Skills · KR_Passive 접두어가 E.G.O 파일(_Ego)까지 잡는다.
+        Map<String, Set<Integer>> used = new HashMap<>();
+        for (String prefix : List.of("KR_Skills", "KR_Passive")) {
+            rows(files, prefix).forEach((id, row) -> {
+                if (owners.containsKey(id / 100)) {
+                    KEYWORD.matcher(row.toString()).results()
+                            .forEach(match -> used.computeIfAbsent(match.group(1), key -> new TreeSet<>()).add(id / 100));
+                }
+            });
+        }
+
+        Map<String, String> tags = names(files, "KR_Bufs");
+        Map<String, Keyword> byId = new LinkedHashMap<>();
+        Consumer<DataObject> add = row -> {
+            String id = row.getString("id", "");
+            String desc = richText(row.getString("desc", ""), tags).strip();
+            if (used.containsKey(id) && !desc.isEmpty()) {
+                byId.putIfAbsent(id, new Keyword(id, MARKUP.matcher(row.getString("name", "")).replaceAll(""), desc, List.of()));
+            }
+        };
+        // 공통 사전이 먼저 · 인격 전용 키워드(산나비 등)는 그 인격이 나온 이벤트 파일에만 있다
+        forEachRow(files, KEYWORD_FILE, add);
+        forEachRow(files, KEYWORD_PREFIX, add);
+
+        // 이름과 설명이 같은 항목은 인격마다 ID 만 따로 둔 것이라 하나로 · 사용처는 합친다
+        Map<List<String>, Keyword> first = new LinkedHashMap<>();
+        Map<List<String>, Set<Integer>> users = new HashMap<>();
+        byId.values().forEach(keyword -> {
+            List<String> key = List.of(keyword.name(), keyword.desc());
+            first.putIfAbsent(key, keyword);
+            users.computeIfAbsent(key, k -> new TreeSet<>()).addAll(used.get(keyword.id()));
+        });
+        return first.entrySet().stream()
+                .map(entry -> new Keyword(entry.getValue().id(), entry.getValue().name(), entry.getValue().desc(),
+                        users.get(entry.getKey()).stream().map(owners::get).toList()))
+                .toList();
+    }
+
 
     // 이미지 파일명은 문서 제목에서 콜론이 빠진 꼴 · 인격 199건 중 197건이 둘 중 하나로 걸린다.
     // 전신 일러스트가 없는 인격은 대기 스프라이트로 · 이름을 위키텍스트에서 확인하므로 추가 조회가 없다
