@@ -28,12 +28,12 @@ public class Main {
     private static final String DB_USER_KEY = "DB_USER";
     private static final String DB_PASSWORD_KEY = "DB_PASSWORD";
 
-    // 게임 설치 폴더. 없으면 인격 · 키워드 명령 없이 뜬다.
+    // 게임 설치 폴더. 없으면 인격 · 키워드 · E.G.O 명령 없이 뜬다.
     private static final String LIMBUS_DIR_KEY = "LIMBUS_DIR";
 
     private static final String IDENTITY_COMMANDS =
             "/" + IdentityListener.COMMAND.getName() + " · /" + IdentitySearchListener.COMMAND.getName()
-                    + " · /" + KeywordListener.COMMAND.getName();
+                    + " · /" + KeywordListener.COMMAND.getName() + " · /" + EgoListener.COMMAND.getName();
 
     private static final List<String> REQUIRED_KEYS = List.of(TOKEN_KEY, DB_URL_KEY, DB_USER_KEY, DB_PASSWORD_KEY);
 
@@ -78,17 +78,18 @@ public class Main {
         if (identities != null) {
             identities.start();
             jda.addEventListener(new IdentityListener(identities), new IdentitySearchListener(identities),
-                    new KeywordListener(identities));
+                    new KeywordListener(identities), new EgoListener(identities));
             commands.add(IdentityListener.COMMAND);
             commands.add(IdentitySearchListener.COMMAND);
             commands.add(KeywordListener.COMMAND);
+            commands.add(EgoListener.COMMAND);
         }
         jda.updateCommands().addCommands(commands).complete();
 
         System.out.println("봇이 정상적으로 로그인되었습니다");
     }
 
-    // 게임 텍스트가 없으면 인격 · 키워드 명령은 등록하지 않는다. 나머지 명령은 그대로 뜬다.
+    // 게임 텍스트가 없으면 인격 · 키워드 · E.G.O 명령은 등록하지 않는다. 나머지 명령은 그대로 뜬다.
     private static IdentityCatalog identityCatalog(String gameDir) {
         if (gameDir.isBlank()) {
             System.err.println(LIMBUS_DIR_KEY + " 값이 없어 " + IDENTITY_COMMANDS + " 을 등록하지 않습니다.");

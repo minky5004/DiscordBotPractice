@@ -62,7 +62,7 @@ class IdentityCatalog {
     record Keyword(String id, String name, String desc, List<String> users) {
     }
 
-    private static final Map<String, String> SINS = Map.of(
+    static final Map<String, String> SINS = Map.of(
             "wrath", "분노", "lust", "색욕", "sloth", "나태", "gluttony", "탐식", "gloom", "우울", "pride", "오만", "envy", "질투");
 
     private static final Map<String, String> TYPES = Map.of(
@@ -136,6 +136,8 @@ class IdentityCatalog {
 
     private volatile List<Keyword> keywords = List.of();
 
+    private volatile List<EgoCatalog.Ego> egos = List.of();
+
     // 위키가 실패하면 마지막으로 받은 문서로 조립한다. 갱신 스레드에서만 만진다.
     private Map<String, String> pages = Map.of();
 
@@ -155,6 +157,10 @@ class IdentityCatalog {
 
     List<Keyword> keywords() {
         return keywords;
+    }
+
+    List<EgoCatalog.Ego> egos() {
+        return egos;
     }
 
     void start() {
@@ -182,8 +188,16 @@ class IdentityCatalog {
             } else {
                 keywords = read;
             }
-            log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개", built.size(),
-                    built.stream().filter(identity -> identity.stats() != null).count(), keywords.size());
+            List<EgoCatalog.Ego> builtEgos = EgoCatalog.build(files, this::fetchWiki);
+            if (builtEgos.isEmpty()) {
+                log.warn("게임 폴더에서 E.G.O 를 하나도 읽지 못함 · 이전 목록 유지 · {}", localize);
+                next = RETRY_INTERVAL;
+            } else {
+                egos = builtEgos;
+            }
+            log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개 · E.G.O {}개 · 수치 있는 E.G.O {}개", built.size(),
+                    built.stream().filter(identity -> identity.stats() != null).count(), keywords.size(),
+                    egos.size(), egos.stream().filter(ego -> ego.risk() != null).count());
             if (wikiFailed) {
                 next = RETRY_INTERVAL;
             }
@@ -213,7 +227,10 @@ class IdentityCatalog {
             wikiFailed = true;
             return pages;
         }
-        pages = fetched;
+        // 인격과 E.G.O 가 따로 받는다 · 통째로 바꾸면 한쪽 실패 때 다른 쪽 문서로 되돌아간다
+        Map<String, String> merged = new HashMap<>(pages);
+        merged.putAll(fetched);
+        pages = merged;
         return fetched;
     }
 
@@ -359,13 +376,8 @@ class IdentityCatalog {
     }
 
     // 9999 는 지원 유닛, 40501 은 외형 투영. 스킬 · 패시브 ID 는 인격 ID × 100 + n.
-    private static boolean isIdentity(int id) {
+    static boolean isIdentity(int id) {
         return id >= 10000 && id < 20000;
-    }
-
-    // E.G.O 는 2SSNN · SS 가 수감자 번호 (인격 1SSNN 과 같은 자리). 201011 같은 여섯 자리는 연출 전용 장비.
-    private static boolean isEgo(int id) {
-        return id >= 20000 && id < 30000;
     }
 
     // 인격 · E.G.O 의 스킬 · 패시브 본문에 [ID] 로 나오는 키워드만 · 옛 메커니즘(Burn)이 지금 것(Combustion)과 이름이 겹치고
@@ -382,7 +394,7 @@ class IdentityCatalog {
             }
         });
         egos.forEach((id, row) -> {
-            if (isEgo(id)) {
+            if (EgoCatalog.isEgo(id)) {
                 owners.put(id, "E.G.O " + row.getString("name", "") + " · " + sinners.getOrDefault(id / 100 % 100, "?"));
             }
         });
@@ -454,7 +466,7 @@ class IdentityCatalog {
     }
 
     // 인격 칭호는 게임 화면용 줄바꿈을 품고 있다
-    private static String oneLine(String title) {
+    static String oneLine(String title) {
         return title.replace("::\n", "::").replace('\n', ' ');
     }
 
@@ -526,7 +538,7 @@ class IdentityCatalog {
         return MARKUP.matcher(text).replaceAll("");
     }
 
-    private static Map<Integer, DataObject> rows(Map<String, byte[]> files, String prefix) {
+    static Map<Integer, DataObject> rows(Map<String, byte[]> files, String prefix) {
         Map<Integer, DataObject> rows = new TreeMap<>();
         forEachRow(files, prefix, row -> {
             if (row.isType("id", DataType.INT)) {
@@ -536,7 +548,7 @@ class IdentityCatalog {
         return rows;
     }
 
-    private static Map<String, String> names(Map<String, byte[]> files, String prefix) {
+    static Map<String, String> names(Map<String, byte[]> files, String prefix) {
         Map<String, String> names = new LinkedHashMap<>();
         forEachRow(files, prefix, row -> {
             if (row.isType("id", DataType.STRING) && row.hasKey("name")) {
@@ -559,22 +571,22 @@ class IdentityCatalog {
     }
 
     // 동기화 최고 단계. levelList 가 없거나 빈 행은 그 스킬만 버린다 — 하나 때문에 갱신 전체를 멈추지 않는다.
-    private static DataObject lastLevel(DataObject skill) {
+    static DataObject lastLevel(DataObject skill) {
         DataArray levels = skill.optArray("levelList").orElseGet(DataArray::empty);
         return levels.isEmpty() ? null : levels.getObject(levels.length() - 1);
     }
 
-    private static String englishSkillName(DataObject en) {
+    static String englishSkillName(DataObject en) {
         DataObject top = en == null ? null : lastLevel(en);
         return top == null ? "" : top.getString("name", "");
     }
 
     // 위키 스킬명에는 한자 병기(Chainstrike [<b>連擊</b>])가 붙기도 한다
-    private static String nameKey(String name) {
+    static String nameKey(String name) {
         return name.replaceAll("<[^>]*>", "").replaceAll("\\[[^]]*]", "").toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
-    private static String skillText(DataObject level, Map<String, String> tags) {
+    static String skillText(DataObject level, Map<String, String> tags) {
         List<String> lines = new ArrayList<>();
         String desc = level.getString("desc", "");
         if (!desc.isBlank()) {
@@ -603,7 +615,7 @@ class IdentityCatalog {
                 resist(page.get("slash")), resist(page.get("pierce")), resist(page.get("blunt")));
     }
 
-    private static SkillStats skillStats(Map<String, String> skill) {
+    static SkillStats skillStats(Map<String, String> skill) {
         String coinPower = skill.get("cpower");
         return new SkillStats(SINS.get(lower(skill.get("sin"))), TYPES.get(lower(skill.get("type"))), integer(skill.get("spower")),
                 coinPower == null || coinPower.isBlank() ? null : coinPower.replaceAll("\\s", ""), integer(skill.get("coin")),
@@ -626,7 +638,7 @@ class IdentityCatalog {
         return parts.isEmpty() ? null : String.join(" · ", parts);
     }
 
-    private static Double resist(String value) {
+    static Double resist(String value) {
         String lower = lower(value);
         for (Map.Entry<String, Double> resist : RESISTS.entrySet()) {
             if (lower.startsWith(resist.getKey())) {
@@ -640,7 +652,7 @@ class IdentityCatalog {
         }
     }
 
-    private static Integer integer(String value) {
+    static Integer integer(String value) {
         try {
             return value == null ? null : Integer.valueOf(value.strip());
         } catch (NumberFormatException e) {
@@ -649,7 +661,7 @@ class IdentityCatalog {
     }
 
     // Map.of 는 null 키 조회에 NPE 를 던진다. 위키에 없는 파라미터는 빈 문자열로.
-    private static String lower(String value) {
+    static String lower(String value) {
         return value == null ? "" : value.strip().toLowerCase(Locale.ROOT);
     }
 }
