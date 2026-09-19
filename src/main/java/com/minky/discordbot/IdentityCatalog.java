@@ -174,7 +174,14 @@ class IdentityCatalog {
                 return;
             }
             identities = built;
-            keywords = keywords(files);
+            List<Keyword> read = keywords(files);
+            if (read.isEmpty()) {
+                // 인격과 같은 이유 · 키워드 파일만 이름이 바뀌어도 예외 없이 0건
+                log.warn("게임 폴더에서 키워드를 하나도 읽지 못함 · 이전 목록 유지 · {}", localize);
+                next = RETRY_INTERVAL;
+            } else {
+                keywords = read;
+            }
             log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개", built.size(),
                     built.stream().filter(identity -> identity.stats() != null).count(), keywords.size());
             if (wikiFailed) {
