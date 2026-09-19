@@ -19,8 +19,8 @@ class EgoCatalog {
     record EgoSkill(int id, boolean corrosion, String name, String text, SkillStats stats, Integer sanity) {
     }
 
-    // risk · image 는 위키 문서가 없으면 null · costs 와 resists 는 죄악 순서(분노 → 질투)
-    record Ego(int id, String name, String sinner, String risk, String image, Map<String, Integer> costs,
+    // wiki 는 위키 문서를 찾았는지 · risk · image 는 없으면 null · costs 와 resists 는 죄악 순서(분노 → 질투)
+    record Ego(int id, String name, String sinner, boolean wiki, String risk, String image, Map<String, Integer> costs,
                Map<String, Double> resists, List<EgoSkill> skills, List<Passive> passives) {
     }
 
@@ -96,9 +96,9 @@ class EgoCatalog {
                 }
             });
 
-            result.add(new Ego(id, kr.getString("name", ""), sinners.getOrDefault(sinnerNumber(id), ""),
+            result.add(new Ego(id, kr.getString("name", ""), sinners.getOrDefault(sinnerNumber(id), ""), egoPage != null,
                     egoPage == null ? null : blankToNull(egoPage.get("risk")),
-                    egoPage == null ? null : IdentityCatalog.fileUrl(titles.get(id), ".png"),
+                    egoPage == null ? null : image(egoPage),
                     egoPage == null ? Map.of() : costs(egoPage), egoPage == null ? Map.of() : resists(egoPage),
                     egoSkills, egoPassives));
         });
@@ -111,6 +111,14 @@ class EgoCatalog {
                 .replace('’', '\'')
                 .replace("[", "").replace("]", "")
                 .replaceAll("\\s+", " ").strip();
+    }
+
+    // 위키 틀과 같은 규칙 · filename (없으면 prefix) + sinner · 문서 제목과 다를 수 있다(9:2 → 9-2 Faust.png)
+    private static String image(Map<String, String> page) {
+        String base = blankToNull(page.get("filename"));
+        base = base == null ? blankToNull(page.get("prefix")) : base;
+        String sinner = blankToNull(page.get("sinner"));
+        return base == null || sinner == null ? null : IdentityCatalog.fileUrl(base + " " + sinner, ".png");
     }
 
     // 게임 최고 단계가 5 인 스킬은 위키의 5단계 칸(askill5) · 나머지는 번호 없는 칸

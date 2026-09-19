@@ -197,7 +197,7 @@ class IdentityCatalog {
             }
             log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개 · E.G.O {}개 · 수치 있는 E.G.O {}개", built.size(),
                     built.stream().filter(identity -> identity.stats() != null).count(), keywords.size(),
-                    egos.size(), egos.stream().filter(ego -> ego.risk() != null).count());
+                    egos.size(), egos.stream().filter(EgoCatalog.Ego::wiki).count());
             if (wikiFailed) {
                 next = RETRY_INTERVAL;
             }

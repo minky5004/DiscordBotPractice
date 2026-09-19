@@ -111,7 +111,7 @@ public class EgoListener extends ListenerAdapter {
         int total = blocks.stream().mapToInt(String::length).sum();
         int share = total <= BODY_LIMIT ? Integer.MAX_VALUE : BODY_LIMIT / blocks.size();
         blocks.forEach(block -> children.add(TextDisplay.of(NoticeListener.cut(block, share))));
-        if (ego.risk() != null) {
+        if (ego.wiki()) {
             children.add(TextDisplay.of(WIKI_CREDIT));
         }
         return Container.of(children).withAccentColor(color(ego));

@@ -60,6 +60,8 @@ class EgoCatalogTest {
                         {"dataList":[{"id":"Paralysis","name":"마비"}]}""");
         String cairn = """
                 {{EGPage
+                |prefix=Wishing Cairn
+                |sinner=Yi Sang
                 |risk=TETH
                 |asanity=20
                 |csanity=15
@@ -97,6 +99,9 @@ class EgoCatalogTest {
                 }}""";
         String tears = """
                 {{EGPage
+                |prefix=Tears of the Tarnished Blood [汚血泣淚]
+                |filename=Tears of the Tarnished Blood 汚血泣淚
+                |sinner=Sinclair
                 |risk=WAW
                 |askill={{Skill
                 |sin=Gluttony
@@ -117,7 +122,7 @@ class EgoCatalogTest {
         // 스킬 · 패시브가 하나도 없는 E.G.O(출시 전 데이터) · 여섯 자리 연출 전용 장비는 목록에서 뺀다
         assertEquals(List.of("Wishing Cairn Yi Sang", "Tears of the Tarnished Blood 汚血泣淚 Sinclair"), requested);
         assertEquals(List.of(
-                        new Ego(20103, "소망석", "이상", "TETH",
+                        new Ego(20103, "소망석", "이상", true, "TETH",
                                 "https://limbuscompany.wiki.gg/wiki/Special:FilePath/Wishing%20Cairn%20Yi%20Sang.png",
                                 Map.of("나태", 4, "우울", 1), Map.of("분노", 1.0, "나태", 0.5, "우울", 2.0),
                                 List.of(
@@ -127,7 +132,8 @@ class EgoCatalogTest {
                                         new EgoSkill(2010321, true, "소망석", "무작위 대상 공격",
                                                 new SkillStats("나태", "타격", 29, "-10", 1, null), 15)),
                                 List.of(new Passive(2010311, "돌하르방", "매 턴 마비 면역", false, null))),
-                        new Ego(20608, "오혈읍루 [汚血泣淚]", "싱클레어", "WAW",
+                        // 그림 파일 이름은 위키 틀처럼 filename (없으면 prefix) + sinner
+                        new Ego(20608, "오혈읍루 [汚血泣淚]", "싱클레어", true, "WAW",
                                 "https://limbuscompany.wiki.gg/wiki/Special:FilePath/Tears%20of%20the%20Tarnished%20Blood%20%E6%B1%9A%E8%A1%80%E6%B3%A3%E6%B7%9A%20Sinclair.png",
                                 Map.of(), Map.of(),
                                 List.of(
@@ -140,6 +146,32 @@ class EgoCatalogTest {
     }
 
     @Test
+    void imageFollowsTheWikiTemplatesFilenameNotThePageTitle() {
+        Map<String, byte[]> files = files(
+                "KR_Personalities.json", """
+                        {"dataList":[{"id":10201,"title":"LCB 수감자","name":"파우스트"}]}""",
+                "EN_Personalities.json", """
+                        {"dataList":[{"id":10201,"title":"LCB Sinner","name":"Faust"}]}""",
+                "KR_Egos.json", """
+                        {"dataList":[{"id":20209,"name":"9:2"}]}""",
+                "EN_Egos.json", """
+                        {"dataList":[{"id":20209,"name":"9:2"}]}""",
+                "KR_Skills_Ego.json", """
+                        {"dataList":[{"id":2020911,"levelList":[{"level":4,"name":"9:2","desc":""}]}]}""");
+        String page = """
+                {{EGPage
+                |prefix=9:2
+                |filename=9-2
+                |sinner=Faust
+                }}""";
+
+        Ego ego = EgoCatalog.build(files, titles -> Map.of("9:2 Faust", page)).getFirst();
+        assertEquals("https://limbuscompany.wiki.gg/wiki/Special:FilePath/9-2%20Faust.png", ego.image());
+        // 위험등급이 비어도 위키 문서는 찾은 것
+        assertEquals(true, ego.wiki());
+    }
+
+    @Test
     void egoWithoutWikiPageKeepsGameTextOnly() {
         Map<String, byte[]> files = files(
                 "KR_Personalities.json", """
@@ -149,7 +181,7 @@ class EgoCatalogTest {
                 "KR_Skills_Ego.json", """
                         {"dataList":[{"id":2010311,"levelList":[{"level":4,"name":"소망석","desc":"공격"}]}]}""");
 
-        assertEquals(List.of(new Ego(20103, "소망석", "이상", null, null, Map.of(), Map.of(),
+        assertEquals(List.of(new Ego(20103, "소망석", "이상", false, null, null, Map.of(), Map.of(),
                         List.of(new EgoSkill(2010311, false, "소망석", "공격", null, null)), List.of())),
                 EgoCatalog.build(files, titles -> Map.of()));
     }

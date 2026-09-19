@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EgoListenerTest {
 
-    private static final Ego CAIRN = new Ego(20103, "소망석", "이상", "TETH", "https://example.com/cairn.png",
+    private static final Ego CAIRN = new Ego(20103, "소망석", "이상", true, "TETH", "https://example.com/cairn.png",
             ordered(Map.entry("나태", 4), Map.entry("우울", 1)),
             ordered(Map.entry("분노", 1.0), Map.entry("나태", 0.5), Map.entry("우울", 2.0)),
             List.of(
@@ -69,8 +69,15 @@ class EgoListenerTest {
     }
 
     @Test
+    void wikiPageWithoutRiskStillCreditsTheWiki() {
+        Ego noRisk = new Ego(20103, "소망석", "이상", true, null, null, Map.of("나태", 4), Map.of(),
+                List.of(new EgoSkill(2010311, false, "소망석", "공격", null, null)), List.of());
+        assertTrue(texts(EgoListener.container(noRisk)).contains("-# 수치: Limbus Company Wiki (wiki.gg)"));
+    }
+
+    @Test
     void egoWithoutWikiDropsStatsLinesAndCredit() {
-        Ego bare = new Ego(20103, "소망석", "이상", null, null, Map.of(), Map.of(),
+        Ego bare = new Ego(20103, "소망석", "이상", false, null, null, Map.of(), Map.of(),
                 List.of(new EgoSkill(2010311, false, "소망석", "", null, null)), List.of());
         assertEquals(List.of("## 소망석", "-# 이상", "### 각성 · 소망석\n-# 수치 없음\n-# 효과 없음"),
                 texts(EgoListener.container(bare)));
@@ -79,7 +86,7 @@ class EgoListenerTest {
     @Test
     void longTextStaysUnderTheMessageLimit() {
         String longText = "가".repeat(3000);
-        Ego wordy = new Ego(20103, "소망석", "이상", "TETH", null, Map.of(), Map.of(),
+        Ego wordy = new Ego(20103, "소망석", "이상", true, "TETH", null, Map.of(), Map.of(),
                 List.of(new EgoSkill(1, false, "각성", longText, null, null), new EgoSkill(2, true, "침식", longText, null, null)),
                 List.of(new Passive(3, "패시브", longText, false, null), new Passive(4, "패시브2", longText, false, null)));
         int total = texts(EgoListener.container(wordy)).stream().mapToInt(String::length).sum();
@@ -89,14 +96,14 @@ class EgoListenerTest {
     @Test
     void oneLongSkillIsNotCutWhenTheWholeScreenFits() {
         String longText = "가".repeat(1800);
-        Ego ego = new Ego(20109, "긴 E.G.O", "이상", null, null, Map.of(), Map.of(),
+        Ego ego = new Ego(20109, "긴 E.G.O", "이상", false, null, null, Map.of(), Map.of(),
                 List.of(new EgoSkill(1, false, "각성", longText, null, null)), List.of());
         assertTrue(texts(EgoListener.container(ego)).stream().anyMatch(text -> text.endsWith(longText)));
     }
 
     @Test
     void searchMatchesEgoOrSinnerName() {
-        List<Ego> egos = List.of(CAIRN, new Ego(20608, "오혈읍루 [汚血泣淚]", "싱클레어", null, null, Map.of(), Map.of(), List.of(), List.of()));
+        List<Ego> egos = List.of(CAIRN, new Ego(20608, "오혈읍루 [汚血泣淚]", "싱클레어", false, null, null, Map.of(), Map.of(), List.of(), List.of()));
         assertEquals(List.of(20103), EgoListener.search(egos, "소망 석").stream().map(Ego::id).toList());
         assertEquals(List.of(20608), EgoListener.search(egos, "싱클").stream().map(Ego::id).toList());
         assertEquals(20608, EgoListener.find(egos, "20608").id());
