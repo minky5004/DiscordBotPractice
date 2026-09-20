@@ -91,7 +91,7 @@ class IdentityCatalog {
     // 게임 설치 폴더 기준
     private static final String LOCALIZE = "LimbusCompany_Data/Assets/Resources_moved/Localize";
 
-    private static final Pattern LOCALIZE_FILE = Pattern.compile("(?:KR|EN)_(?:Personalities|Skills|Passive|Bufs|SkillTag|BattleKeywords|Egos|EGOgift).*\\.json");
+    private static final Pattern LOCALIZE_FILE = Pattern.compile("(?:KR|EN)_(?:Personalities|Skills|Passive|Bufs|SkillTag|BattleKeywords|Egos|EGOgift|AbnormalityGuides).*\\.json");
 
     // 전투 공통 사전 · 이벤트 · 거울 던전 변형 파일은 같은 ID 에 다른 설명을 두기도 해 공통 쪽이 우선
     private static final String KEYWORD_FILE = "KR_BattleKeywords.json";
@@ -140,6 +140,8 @@ class IdentityCatalog {
 
     private volatile List<GiftCatalog.Gift> gifts = List.of();
 
+    private volatile List<AbnoCatalog.Abno> abnos = List.of();
+
     // 위키가 실패하면 마지막으로 받은 문서로 조립한다. 갱신 스레드에서만 만진다.
     private Map<String, String> pages = Map.of();
 
@@ -167,6 +169,10 @@ class IdentityCatalog {
 
     List<GiftCatalog.Gift> gifts() {
         return gifts;
+    }
+
+    List<AbnoCatalog.Abno> abnos() {
+        return abnos;
     }
 
     void start() {
@@ -208,10 +214,19 @@ class IdentityCatalog {
             } else {
                 gifts = builtGifts;
             }
-            log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개 · E.G.O {}개 · 수치 있는 E.G.O {}개 · 기프트 {}개 · 수치 있는 기프트 {}개",
+            List<AbnoCatalog.Abno> builtAbnos = AbnoCatalog.build(files, wikiTitles(AbnoCatalog.WIKI_TEMPLATE), this::fetchWiki);
+            if (builtAbnos.isEmpty()) {
+                log.warn("위키에서 환상체를 하나도 읽지 못함 · 이전 목록 유지");
+                next = RETRY_INTERVAL;
+            } else {
+                abnos = builtAbnos;
+            }
+            log.info("인격 목록 {}개 · 수치 있는 인격 {}개 · 키워드 {}개 · E.G.O {}개 · 수치 있는 E.G.O {}개 · 기프트 {}개 · 수치 있는 기프트 {}개"
+                            + " · 환상체 {}개 · 관찰 로그 있는 환상체 {}개",
                     built.size(), built.stream().filter(identity -> identity.stats() != null).count(), keywords.size(),
                     egos.size(), egos.stream().filter(EgoCatalog.Ego::wiki).count(),
-                    gifts.size(), gifts.stream().filter(GiftCatalog.Gift::wiki).count());
+                    gifts.size(), gifts.stream().filter(GiftCatalog.Gift::wiki).count(),
+                    abnos.size(), abnos.stream().filter(abno -> !abno.logs().isEmpty()).count());
             if (wikiFailed) {
                 next = RETRY_INTERVAL;
             }
@@ -250,8 +265,37 @@ class IdentityCatalog {
 
     // 제목 50개를 쿼리 문자열에 실으면 URL 이 길어져 POST 로
     private String postWiki(List<String> titles) throws IOException, InterruptedException {
-        String form = "action=query&prop=revisions&rvprop=content&rvslots=main&redirects=1&format=json&formatversion=2&titles="
-                + URLEncoder.encode(String.join("|", titles), StandardCharsets.UTF_8);
+        return post("action=query&prop=revisions&rvprop=content&rvslots=main&redirects=1&format=json&formatversion=2&titles="
+                + URLEncoder.encode(String.join("|", titles), StandardCharsets.UTF_8));
+    }
+
+    // 틀 하나를 쓰는 본문 문서 제목 전부 · 익명 요청 상한 500 을 환상체 수가 넘으면 뒷부분이 빠진다
+    List<String> wikiTitles(String template) {
+        try {
+            String json = post("action=query&list=embeddedin&einamespace=0&eilimit=max&format=json&formatversion=2&eititle="
+                    + URLEncoder.encode("Template:" + template, StandardCharsets.UTF_8));
+            DataArray list = DataObject.fromJson(json).getObject("query").optArray("embeddedin").orElseGet(DataArray::empty);
+            List<String> titles = new ArrayList<>();
+            for (int i = 0; i < list.length(); i++) {
+                String title = list.getObject(i).getString("title");
+                // 번역 하위문서(Ebony Queen's Apple/es)는 같은 대상이 한 번 더 오는 것이라 뺀다
+                if (!title.contains("/")) {
+                    titles.add(title);
+                }
+            }
+            return titles;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            wikiFailed = true;
+            return List.of();
+        } catch (IOException | RuntimeException e) {
+            log.warn("위키 문서 목록 받기 실패 · 이전 목록 사용", e);
+            wikiFailed = true;
+            return List.of();
+        }
+    }
+
+    private String post(String form) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder(WIKI_API)
                 .timeout(WIKI_TIMEOUT)
                 .header("User-Agent", USER_AGENT)
