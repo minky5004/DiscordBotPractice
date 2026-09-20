@@ -90,6 +90,9 @@ public class Main {
             commands.add(GiftSearchListener.COMMAND);
             commands.add(AbnoListener.COMMAND);
         }
+        // 도움말은 등록 목록을 그대로 읽으므로 마지막에 · 자기 자신까지 목록에 든다
+        commands.add(HelpListener.COMMAND);
+        jda.addEventListener(new HelpListener(List.copyOf(commands)));
         jda.updateCommands().addCommands(commands).complete();
 
         System.out.println("봇이 정상적으로 로그인되었습니다");
