@@ -28,13 +28,14 @@ public class Main {
     private static final String DB_USER_KEY = "DB_USER";
     private static final String DB_PASSWORD_KEY = "DB_PASSWORD";
 
-    // 게임 설치 폴더. 없으면 게임 데이터 명령(인격 · 키워드 · E.G.O · 기프트) 없이 뜬다.
+    // 게임 설치 폴더. 없으면 게임 데이터 명령(인격 · 키워드 · E.G.O · 기프트 · 환상체) 없이 뜬다.
     private static final String LIMBUS_DIR_KEY = "LIMBUS_DIR";
 
     private static final String IDENTITY_COMMANDS =
             "/" + IdentityListener.COMMAND.getName() + " · /" + IdentitySearchListener.COMMAND.getName()
                     + " · /" + KeywordListener.COMMAND.getName() + " · /" + EgoListener.COMMAND.getName()
-                    + " · /" + GiftListener.COMMAND.getName() + " · /" + GiftSearchListener.COMMAND.getName();
+                    + " · /" + GiftListener.COMMAND.getName() + " · /" + GiftSearchListener.COMMAND.getName()
+                    + " · /" + AbnoListener.COMMAND.getName();
 
     private static final List<String> REQUIRED_KEYS = List.of(TOKEN_KEY, DB_URL_KEY, DB_USER_KEY, DB_PASSWORD_KEY);
 
@@ -80,13 +81,14 @@ public class Main {
             identities.start();
             jda.addEventListener(new IdentityListener(identities), new IdentitySearchListener(identities),
                     new KeywordListener(identities), new EgoListener(identities), new GiftListener(identities),
-                    new GiftSearchListener(identities));
+                    new GiftSearchListener(identities), new AbnoListener(identities));
             commands.add(IdentityListener.COMMAND);
             commands.add(IdentitySearchListener.COMMAND);
             commands.add(KeywordListener.COMMAND);
             commands.add(EgoListener.COMMAND);
             commands.add(GiftListener.COMMAND);
             commands.add(GiftSearchListener.COMMAND);
+            commands.add(AbnoListener.COMMAND);
         }
         jda.updateCommands().addCommands(commands).complete();
 
