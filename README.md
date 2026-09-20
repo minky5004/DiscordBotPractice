@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml)
 
-> 림버스 컴퍼니 엔케팔린 완충 시각 계산 · 그 시각 **봇 재시작에도 사라지지 않는** 멘션 예약 · Steam 공식 공지의 한국어 채널 중계 · 인격 · E.G.O · 기프트 조회 · 조건 검색 · 키워드 사전
+> 림버스 컴퍼니 엔케팔린 완충 시각 계산 · 그 시각 **봇 재시작에도 사라지지 않는** 멘션 예약 · Steam 공식 공지의 한국어 채널 중계 · 인격 · E.G.O · 기프트 · 환상체 조회 · 조건 검색 · 키워드 사전
 
 실제 `/인격 이름:엄숙한 애도` 응답 — 게임 한국어 원문에 위키 수치 · 일러스트를 붙인 컨테이너.
 첫 화면은 훑는 자리, 버튼 하나가 스킬 하나.
@@ -59,6 +59,7 @@
 | `/기프트 이름:지옥나비의 꿈` | 거울 던전 E.G.O 기프트 401종 조회 · 자동완성 | 죄악 · 등급 · 키워드 · 가격 · 효과 · `[기본] [+] [++]` 강화판 버튼 |
 | `/기프트검색 키워드:화상 등급:IV` | 조건에 맞는 기프트 목록 · 키워드 · 등급 · 죄악 전부 선택 | 등급 높은 순 번호 목록 · 버튼 하나가 기프트 화면 |
 | `/키워드 이름:나비` | 인격 · E.G.O 스킬 키워드 388개 조회 · 자동완성 · `공개` 옵션은 `/인격` 과 같음 | 게임 원문 설명 · 그 키워드를 쓰는 인격 · E.G.O |
+| `/환상체 이름:징벌 새` | 환상체 81종 조회 · 한국어 이름 · 영어 문서 제목 자동완성 | 위험 등급 색 띠 · 유래 E.G.O · 얻는 기프트 · 등장 거울 · 관찰 로그 버튼 |
 
 유저당 예약 하나 — 재실행은 교체(PK 의 `ON CONFLICT`) · 서버 채널 전용 · 보관된 스레드처럼 캐시에서 빠진
 채널은 DM 으로.
@@ -71,7 +72,7 @@
 
 인격 조회의 텍스트는 설치된 게임의 한국어 파일 · 수치 · 그림은 [림버스 컴퍼니 위키](https://limbuscompany.wiki.gg) — 인격 안에서
 영어 이름으로 맞춘 짝(인격 187 · 스킬 842 중 829). 그림은 위키 문서에 적힌 파일 이름 그대로 — 전신 일러스트 우선 · 대체는 대기
-스프라이트 · 인격 187 중 185. `LIMBUS_DIR` 없는 기동 — 게임 데이터 명령 여섯(인격 · E.G.O · 기프트 · 키워드)이 빠진 목록.
+스프라이트 · 인격 187 중 185. `LIMBUS_DIR` 없는 기동 — 게임 데이터 명령 일곱(인격 · E.G.O · 기프트 · 키워드 · 환상체)이 빠진 목록.
 
 검색의 죄악 · 유형은 스킬 단위 — 분노 스킬 따로 · 관통 스킬 따로인 인격이 빠진 목록. 수감자 · 등급 · 시즌은 인격 단위 ·
 조건끼리는 AND. 한 화면은 등급 높은 순 앞 25건 — 버튼 한도와 같은 수 · 넘는 만큼은 조건을 더 주는 쪽. 결과 버튼이
@@ -86,6 +87,9 @@ E.G.O 도 같은 출처 · 위키 제목은 영어 이름 + 수감자(112종 전
 키워드 사전의 출처는 게임의 전투 키워드 파일 전부 — 산나비 같은 인격 전용 키워드 정의가 그 인격이 나온 이벤트 파일에만.
 인격 · E.G.O 스킬 본문에 나오는 것만 남긴 목록 — 옛 화상(`Burn`) · 이벤트 전투 전용 키워드가 빠진 388개.
 
+환상체만 목록의 출처가 위키 쪽 — `{{AbnoInfo}}` 를 쓰는 문서 81종 · 게임 도감에서 가져오는 것은 한국어 관찰 로그뿐.
+도감 항목이 있는 쪽은 40종 — 나머지는 거울 던전 이벤트에서만 만나는 · 도감에 오르지 않는 환상체.
+
 ## 기술 스택
 
 | 구분 | 기술 |
@@ -95,7 +99,7 @@ E.G.O 도 같은 출처 · 위키 제목은 영어 이름 + 수감자(112종 전
 | Data | 게임 설치 폴더의 한국어 · 영어 텍스트 + wiki.gg MediaWiki API — 24시간마다 다시 읽음 · 의존성 없이 `HttpClient` · JDA `DataObject` |
 | Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
 | OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
-| Test | JUnit 5 · Testcontainers · 105개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Test | JUnit 5 · Testcontainers · 115개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
@@ -137,12 +141,14 @@ DiscordBotPractice/
 │   ├── IdentityCatalog.java          게임 텍스트 · 위키 수치 · 그림 주소를 영어 이름으로 맞춘 인격 목록 · 키워드 사전 · 24시간 갱신
 │   ├── EgoCatalog.java               E.G.O 텍스트 · 위키 EGPage 수치 · 일러스트 · 같은 갱신에서 함께
 │   ├── GiftCatalog.java              거울 던전 기프트 텍스트 · 위키 Lua 데이터 모듈 · 강화판 · 같은 갱신에서 함께
+│   ├── AbnoCatalog.java              위키 AbnoInfo 문서 목록 · 게임 도감의 한국어 관찰 로그 · 같은 갱신에서 함께
 │   ├── IdentityListener.java         /인격 · 자동완성 · 컨테이너 · 버튼 페이지 · 죄악 색 띠
 │   ├── IdentitySearchListener.java   /인격검색 · 스킬 단위 조건 · /인격 상세로 잇는 결과 버튼
 │   ├── EgoListener.java              /에고 · 자동완성 · 각성 · 침식 · 패시브 한 화면
 │   ├── GiftListener.java             /기프트 · 자동완성 · 강화판 버튼
 │   ├── GiftSearchListener.java       /기프트검색 · 키워드 · 등급 · 죄악 · /기프트 화면으로 잇는 결과 버튼
-│   └── KeywordListener.java          /키워드 · 자동완성 · 설명 · 쓰는 인격 · E.G.O
+│   ├── KeywordListener.java          /키워드 · 자동완성 · 설명 · 쓰는 인격 · E.G.O
+│   └── AbnoListener.java             /환상체 · 자동완성 · 위험 등급 색 띠 · 관찰 로그 버튼
 ├── src/main/resources/db/migration/  스키마 이력
 ├── src/test/java/…/                  단위(계산 · 설정 파싱) · 통합(저장소 · 스케줄러 — 실제 PostgreSQL)
 ├── Dockerfile                        JDK 빌드 → tesseract 를 얹은 비루트 JRE 이미지
