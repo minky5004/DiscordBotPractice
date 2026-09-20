@@ -277,7 +277,11 @@ class IdentityCatalog {
             DataArray list = DataObject.fromJson(json).getObject("query").optArray("embeddedin").orElseGet(DataArray::empty);
             List<String> titles = new ArrayList<>();
             for (int i = 0; i < list.length(); i++) {
-                titles.add(list.getObject(i).getString("title"));
+                String title = list.getObject(i).getString("title");
+                // 번역 하위문서(Ebony Queen's Apple/es)는 같은 대상이 한 번 더 오는 것이라 뺀다
+                if (!title.contains("/")) {
+                    titles.add(title);
+                }
             }
             return titles;
         } catch (InterruptedException e) {

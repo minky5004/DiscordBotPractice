@@ -1,7 +1,6 @@
 package com.minky.discordbot;
 
 import com.minky.discordbot.AbnoCatalog.Abno;
-import com.minky.discordbot.AbnoCatalog.Log;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.container.ContainerChildComponent;
@@ -111,7 +110,7 @@ public class AbnoListener extends ListenerAdapter {
         }
         children.add(Separator.createDivider(Separator.Spacing.SMALL));
         children.add(TextDisplay.of(shown == 0 ? info(abno)
-                : NoticeListener.cut(abno.logs().get(shown - 1).text(), IdentityListener.TEXT_LIMIT)));
+                : NoticeListener.cut(abno.logs().get(shown - 1), IdentityListener.TEXT_LIMIT)));
         children.add(TextDisplay.of(WIKI_CREDIT));
         children.addAll(IdentityListener.rows(buttons(abno, shown)));
         return Container.of(children).withAccentColor(color(abno.risk()));

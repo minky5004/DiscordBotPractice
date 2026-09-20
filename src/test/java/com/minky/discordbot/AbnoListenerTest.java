@@ -1,7 +1,6 @@
 package com.minky.discordbot;
 
 import com.minky.discordbot.AbnoCatalog.Abno;
-import com.minky.discordbot.AbnoCatalog.Log;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.section.Section;
@@ -18,7 +17,7 @@ class AbnoListenerTest {
 
     private static final Abno BIRD = new Abno("Punishing Bird", "징벌 새", "O-02-56", "TETH", "부리",
             List.of("부리 모양 목걸이"), "이름과 거미의 거울", "https://example.com/bird.png",
-            List.of(new Log(0, "작은 새다."), new Log(1, "성나면 붉어진다.")));
+            List.of("작은 새다.", "성나면 붉어진다."));
 
     // 거울 던전 이벤트에서만 만나 도감 항목이 없는 환상체
     private static final Abno SOUP = new Abno("Basilisoup", "바질리스프크", null, null, null, List.of(), null, null, List.of());

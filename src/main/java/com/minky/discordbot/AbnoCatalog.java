@@ -15,13 +15,9 @@ import java.util.regex.Pattern;
 // 위키(wiki.gg) {{AbnoInfo}} 문서에 설치된 게임의 한국어 관찰 로그를 붙인 환상체 목록 · 갱신은 IdentityCatalog 가 같은 파일로 함께
 class AbnoCatalog {
 
-    // level 은 관찰 단계 · 게임 도감에 없는 환상체면 목록 자체가 빈다
-    record Log(int level, String text) {
-    }
-
     // ego · gifts 는 게임 텍스트에서 한국어 이름을 찾지 못하면 위키의 영어 이름 그대로 · 나머지 위키 칸은 없으면 null
     record Abno(String title, String name, String code, String risk, String ego, List<String> gifts, String location,
-                String image, List<Log> logs) {
+                String image, List<String> logs) {
     }
 
     // 환상체마다 문서가 있으므로 목록은 이 틀을 쓰는 문서로 받는다
@@ -55,7 +51,8 @@ class AbnoCatalog {
                     .map(slot -> korean(gifts, plain(info.get(slot))))
                     .filter(name -> name != null)
                     .toList();
-            result.add(new Abno(title, plain(info.getOrDefault("krtitle", title)), code, plain(info.get("risk")),
+            String name = plain(info.get("krtitle"));
+            result.add(new Abno(title, name == null ? title : name, code, plain(info.get("risk")),
                     korean(egos, plain(info.get("ego"))), giftNames, plain(info.get("location")),
                     IdentityCatalog.fileUrl(plain(info.get("image")), ""), logs(guide(guides, code))));
         }
@@ -84,16 +81,22 @@ class AbnoCatalog {
         return names;
     }
 
-    // 한 환상체가 난이도 · 거울 던전 변형마다 같은 내용으로 여러 행 · 코드마다 첫 행만
+    // 한 환상체가 난이도 · 거울 던전 변형마다 여러 행이고, 스토리 챕터 쪽은 같은 코드에 작업 결과 메모 한 줄만 담기도 한다.
+    // 관찰 로그가 가장 많은 행을 그 환상체의 도감으로 본다.
     private static Map<String, DataObject> guides(Map<String, byte[]> files) {
         Map<String, DataObject> byCode = new TreeMap<>();
         IdentityCatalog.rows(files, GUIDE_FILE).values().forEach(row -> {
             String code = row.getString("codeName", "").strip();
-            if (!code.isEmpty() && !row.optArray("storyList").orElseGet(DataArray::empty).isEmpty()) {
-                byCode.putIfAbsent(code, row);
+            DataObject kept = byCode.get(code);
+            if (!code.isEmpty() && stories(row).length() > (kept == null ? 0 : stories(kept).length())) {
+                byCode.put(code, row);
             }
         });
         return byCode;
+    }
+
+    private static DataArray stories(DataObject guide) {
+        return guide.optArray("storyList").orElseGet(DataArray::empty);
     }
 
     // 도감 코드가 위키 코드에 형태 접미사를 붙여 쓰기도 한다 (바바야가 F-02-10-18 · 도감 F-02-10-18-a)
@@ -112,17 +115,16 @@ class AbnoCatalog {
                 .orElse(null);
     }
 
-    static List<Log> logs(DataObject guide) {
+    static List<String> logs(DataObject guide) {
         if (guide == null) {
             return List.of();
         }
-        DataArray list = guide.optArray("storyList").orElseGet(DataArray::empty);
-        List<Log> logs = new ArrayList<>();
+        DataArray list = stories(guide);
+        List<String> logs = new ArrayList<>();
         for (int i = 0; i < list.length(); i++) {
-            DataObject row = list.getObject(i);
-            String story = row.getString("story", "").strip();
+            String story = list.getObject(i).getString("story", "").strip();
             if (!story.isEmpty()) {
-                logs.add(new Log(row.getInt("level", i), story));
+                logs.add(story);
             }
         }
         return logs;
@@ -133,7 +135,11 @@ class AbnoCatalog {
         if (value == null) {
             return null;
         }
-        String text = TAG.split(value, 2)[0];
+        String text = TAG.split(value, 2)[0].strip();
+        if (text.isEmpty()) {
+            // image 칸이 <gallery> 로 시작하기도 한다 · 태그를 지우고 첫 줄을 쓴다
+            text = TAG.matcher(value).replaceAll("").strip().split("\n", 2)[0];
+        }
         text = LINK.matcher(text).replaceAll("$1").replace("''", "").strip();
         return text.isEmpty() ? null : text;
     }
