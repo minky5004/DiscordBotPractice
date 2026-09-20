@@ -47,6 +47,7 @@
 | 명령 | 하는 일 | 응답 |
 | --- | --- | --- |
 | `/ping` | 연결 확인 | `Pong!` |
+| `/help` | 등록된 명령 전부 · 필수 옵션 자리 | 개인 메시지 한 통 · DM 을 막아 둔 사람에게는 나만 보기 응답 |
 | `/엔케팔린 현재:132 최대:142` | 부족분 10개 × 6분 · 완충 시각 멘션 예약 | 완충 시각 · 남은 시간 · 예약 안내 |
 | `/엔케팔린 현재:132 최대:142 알림:False` | 계산만 | 완충 시각 · 남은 시간 |
 | `/엔케팔린취소` | 예약 해제 | `완충 알림 예약 취소` |
@@ -99,7 +100,7 @@ E.G.O 도 같은 출처 · 위키 제목은 영어 이름 + 수감자(112종 전
 | Data | 게임 설치 폴더의 한국어 · 영어 텍스트 + wiki.gg MediaWiki API — 24시간마다 다시 읽음 · 의존성 없이 `HttpClient` · JDA `DataObject` |
 | Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
 | OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
-| Test | JUnit 5 · Testcontainers · 117개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Test | JUnit 5 · Testcontainers · 119개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
@@ -132,6 +133,7 @@ DiscordBotPractice/
 ├── src/main/java/com/minky/discordbot/
 │   ├── Main.java                     설정(환경 변수 → .env) · DB 연결 · Flyway 마이그레이션 · 로그인 · 예약 복구 · 명령 등록
 │   ├── PingPongListener.java         /ping
+│   ├── HelpListener.java             /help · 등록 목록 그대로 · DM 폴백
 │   ├── EnkephalinListener.java       /엔케팔린 · /엔케팔린취소 · 완충 시각 계산 · 멘션 · DM 폴백
 │   ├── ReminderScheduler.java        유저당 예약 하나 · 단일 데몬 스레드 · 기동 시 복구
 │   ├── ReminderStore.java            reminder 테이블 JDBC
