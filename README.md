@@ -76,7 +76,7 @@
 스프라이트 · 인격 187 중 185. `LIMBUS_DIR` 없는 기동 — 게임 데이터 명령 일곱(인격 · E.G.O · 기프트 · 키워드 · 환상체)이 빠진 목록.
 
 검색의 죄악 · 유형은 스킬 단위 — 분노 스킬 따로 · 관통 스킬 따로인 인격이 빠진 목록. 수감자 · 등급 · 시즌은 인격 단위 ·
-조건끼리는 AND. 한 화면은 등급 높은 순 앞 25건 — 버튼 한도와 같은 수 · 넘는 만큼은 조건을 더 주는 쪽. 결과 버튼이
+조건끼리는 AND. 한 화면은 등급 높은 순 · 같은 등급 안은 최신 출시 순 앞 25건 — 버튼 한도와 같은 수 · 넘는 만큼은 조건을 더 주는 쪽. 결과 버튼이
 여는 곳은 `/인격` 상세 화면.
 
 E.G.O 도 같은 출처 · 위키 제목은 영어 이름 + 수감자(112종 전부 짝). 게임 최고 단계가 5인 스킬은 위키의 5단계 칸 ·
@@ -100,7 +100,7 @@ E.G.O 도 같은 출처 · 위키 제목은 영어 이름 + 수감자(112종 전
 | Data | 게임 설치 폴더의 한국어 · 영어 텍스트 + wiki.gg MediaWiki API — 24시간마다 다시 읽음 · 의존성 없이 `HttpClient` · JDA `DataObject` |
 | Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
 | OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
-| Test | JUnit 5 · Testcontainers · 124개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Test | JUnit 5 · Testcontainers · 125개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
