@@ -16,6 +16,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,8 +41,8 @@ import java.util.stream.Stream;
 // 설치된 게임의 한국어 · 영어 텍스트에 림버스 컴퍼니 위키(wiki.gg)의 수치를 붙인 인격 목록
 class IdentityCatalog {
 
-    // 내성은 받는 피해 배율. 위키 표기를 읽지 못한 값은 null.
-    record Stats(Integer rarity, Integer season, Double slash, Double pierce, Double blunt) {
+    // 내성은 받는 피해 배율 · released 는 출시일. 위키 표기를 읽지 못한 값은 null.
+    record Stats(Integer rarity, Integer season, Double slash, Double pierce, Double blunt, LocalDate released) {
     }
 
     // icon 은 위키 스킬 아이콘 URL · 위키에서 짝을 찾지 못하면 null
@@ -102,6 +105,9 @@ class IdentityCatalog {
 
     // 파일 이름만으로 실제 이미지를 되돌려주는 미디어위키 경로
     private static final String FILE_PATH = "https://limbuscompany.wiki.gg/wiki/Special:FilePath/";
+
+    // 위키 releasedate 표기 (187건 전부 2023.02.27 꼴)
+    private static final DateTimeFormatter RELEASE_DATE = DateTimeFormatter.ofPattern("yyyy.MM.dd");
 
     private static final Pattern SPACES = Pattern.compile("\\s+");
 
@@ -675,7 +681,7 @@ class IdentityCatalog {
     // 숫자 접두 없는 값이 동기화 최고 단계
     private static Stats stats(Map<String, String> page) {
         return new Stats(integer(page.get("rarity")), integer(page.get("season")),
-                resist(page.get("slash")), resist(page.get("pierce")), resist(page.get("blunt")));
+                resist(page.get("slash")), resist(page.get("pierce")), resist(page.get("blunt")), date(page.get("releasedate")));
     }
 
     static SkillStats skillStats(Map<String, String> skill) {
@@ -711,6 +717,14 @@ class IdentityCatalog {
         try {
             return Double.valueOf(lower);
         } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    static LocalDate date(String value) {
+        try {
+            return value == null ? null : LocalDate.parse(value.strip(), RELEASE_DATE);
+        } catch (DateTimeParseException e) {
             return null;
         }
     }

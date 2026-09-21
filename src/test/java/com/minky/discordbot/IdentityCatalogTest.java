@@ -9,6 +9,7 @@ import com.minky.discordbot.IdentityCatalog.Stats;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -115,6 +116,7 @@ class IdentityCatalogTest {
                 {{IDPage
                 |rarity=3
                 |season=0
+                |releasedate=2023.07.27
                 |slash=Fatal
                 |pierce=Ineff.
                 |blunt=2
@@ -150,7 +152,7 @@ class IdentityCatalogTest {
 
         assertEquals(List.of("Lobotomy E.G.O::Solemn Lament Yi Sang"), requested);
         assertEquals(List.of(new Identity(10110, "로보토미 E.G.O::엄숙한 애도", "이상", null,
-                        new Stats(3, 0, 2.0, 0.5, 2.0),
+                        new Stats(3, 0, 2.0, 0.5, 2.0, LocalDate.of(2023, 7, 27)),
                         List.of(
                                 new Skill(1011001, "떠난이에게 축하를",
                                         "[합 승리시] 침잠 횟수 2 증가\n코인1 탄환 1 소모 · [적중시] 부여",
