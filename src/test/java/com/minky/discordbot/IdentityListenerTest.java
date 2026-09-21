@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class IdentityListenerTest {
 
     private static final Identity SOLEMN_LAMENT = new Identity(10110, "로보토미 E.G.O::엄숙한 애도", "이상", null,
-            new Stats(3, null, 1.0, 0.5, null),
+            new Stats(3, null, 1.0, 0.5, null, null),
             List.of(
                     new Skill(1011001, "떠난이에게 축하를", "[합 승리시] 침잠 횟수 2 증가\n코인1 나비 부여",
                             new SkillStats("오만", "관통", 4, "+4", 2, null)),

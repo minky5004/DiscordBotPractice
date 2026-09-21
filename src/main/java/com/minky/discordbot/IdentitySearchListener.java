@@ -95,9 +95,12 @@ public class IdentitySearchListener extends ListenerAdapter {
                 .queue();
     }
 
-    // 카탈로그 순서는 게임 ID 순이라 수감자별로 뭉쳐 있다 — 그대로 앞 25건을 자르면 넓은 검색이 앞 두 수감자만 내놓는다
+    // 카탈로그 순서는 게임 ID 순이라 수감자별로 뭉쳐 있다 — 같은 등급 안은 최신순 · 출시가 수감자를 돌아가며 나와
+    // 앞 25건의 수감자가 3~7명에서 11~13명으로 (위키 187건 실측)
     private static final Comparator<Identity> ORDER = Comparator
             .comparing((Identity identity) -> identity.stats() == null ? null : identity.stats().rarity(),
+                    Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(identity -> identity.stats() == null ? null : identity.stats().released(),
                     Comparator.nullsLast(Comparator.reverseOrder()))
             .thenComparing(Identity::id);
 
@@ -147,7 +150,7 @@ public class IdentitySearchListener extends ListenerAdapter {
         children.add(TextDisplay.of(list(shown)));
         if (results.size() > shown.size()) {
             children.add(TextDisplay.of(
-                    "-# " + results.size() + "건 중 등급 높은 앞 " + shown.size() + "건 · 수감자 · 시즌으로 더 좁히기"));
+                    "-# " + results.size() + "건 중 등급 높은 · 최신 앞 " + shown.size() + "건 · 수감자 · 시즌으로 더 좁히기"));
         }
         children.addAll(IdentityListener.rows(buttons(shown)));
         return Container.of(children).withAccentColor(color(filter));

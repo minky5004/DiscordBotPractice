@@ -11,6 +11,7 @@ import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -21,7 +22,7 @@ class IdentitySearchListenerTest {
 
     // 분노와 관통이 서로 다른 스킬에 나뉘어 있다
     private static final Identity SPLIT = new Identity(10101, "수감복", "이상", null,
-            new Stats(3, 1, null, null, null),
+            new Stats(3, 1, null, null, null, LocalDate.of(2023, 2, 27)),
             List.of(
                     new Skill(1010101, "찌르기", "", new SkillStats("오만", "관통", 4, "+3", 2, null)),
                     new Skill(1010102, "내리치기", "", new SkillStats("분노", "타격", 5, "+2", 3, null))),
@@ -29,7 +30,7 @@ class IdentitySearchListenerTest {
 
     // 한 스킬이 분노 관통
     private static final Identity BOTH = new Identity(10201, "쥐어뜯는 손", "파우스트", null,
-            new Stats(2, 3, null, null, null),
+            new Stats(2, 3, null, null, null, LocalDate.of(2024, 1, 18)),
             List.of(new Skill(1020101, "할퀴기", "", new SkillStats("분노", "관통", 6, "+4", 2, null))),
             List.of());
 
@@ -150,7 +151,7 @@ class IdentitySearchListenerTest {
         Container container = IdentitySearchListener.container(many, NONE);
 
         assertEquals(25, buttons(container).size());
-        assertEquals("-# 30건 중 등급 높은 앞 25건 · 수감자 · 시즌으로 더 좁히기", texts(container).get(3));
+        assertEquals("-# 30건 중 등급 높은 · 최신 앞 25건 · 수감자 · 시즌으로 더 좁히기", texts(container).get(3));
     }
 
     // 카탈로그 순서(게임 ID)를 그대로 자르면 넓은 검색이 앞 두 수감자만 내놓는다
@@ -158,6 +159,19 @@ class IdentitySearchListenerTest {
     void higherRarityComesFirstAndMissingStatsLast() {
         assertEquals(List.of(10101, 10201, 10901), ids(IdentitySearchListener.search(
                 List.of(NO_STATS, BOTH, SPLIT), NONE)));
+    }
+
+    // 같은 등급 안에서 게임 ID 순이면 수감자별로 뭉친다 · 출시는 수감자를 돌아가며 나와 최신순이 섞인다
+    @Test
+    void sameRarityIsNewestFirstAndMissingDateLast() {
+        Identity old = new Identity(10102, "옛 인격", "이상", null, new Stats(3, 1, null, null, null, LocalDate.of(2023, 3, 1)),
+                List.of(), List.of());
+        Identity recent = new Identity(11203, "새 인격", "그레고르", null, new Stats(3, 6, null, null, null, LocalDate.of(2025, 5, 1)),
+                List.of(), List.of());
+        Identity undated = new Identity(10105, "날짜 없는 인격", "이상", null, new Stats(3, 2, null, null, null, null),
+                List.of(), List.of());
+
+        assertEquals(List.of(11203, 10102, 10105), ids(IdentitySearchListener.search(List.of(old, undated, recent), NONE)));
     }
 
     @Test
