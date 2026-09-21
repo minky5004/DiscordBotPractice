@@ -2,7 +2,10 @@
 
 [![ci](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/minky5004/DiscordBotPractice/actions/workflows/ci.yml)
 
-> 림버스 컴퍼니 엔케팔린 완충 시각 계산 · 그 시각 **봇 재시작에도 사라지지 않는** 멘션 예약 · Steam 공식 공지의 한국어 채널 중계 · 인격 · E.G.O · 기프트 · 환상체 조회 · 조건 검색 · 키워드 사전
+> 필요해진 기능을 그때그때 공부해 들여오는 디스코드 봇 연습장 — 친구 서버에서 쌓인 림버스 컴퍼니 도우미 기능들
+
+기능이 들어온 순서 — `!ping` 텍스트 명령 → `/ping` 슬래시 명령 → 엔케팔린 완충 멘션 예약(PostgreSQL 영속화 · Docker) →
+Steam 공지 중계 → 정기 점검 알림(공지 이미지 OCR) → 인격 조회 · 검색(Components V2 화면) → 키워드 · E.G.O · 기프트 · 환상체 조회 → `/help`.
 
 실제 `/인격 이름:엄숙한 애도` 응답 — 게임 한국어 원문에 위키 수치 · 일러스트를 붙인 컨테이너.
 첫 화면은 훑는 자리, 버튼 하나가 스킬 하나.
