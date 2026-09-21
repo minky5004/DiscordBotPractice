@@ -53,7 +53,7 @@
 | `/엔케팔린취소` | 예약 해제 | `완충 알림 예약 취소` |
 | `/공지채널 채널:#공지 역할:@알림` | 서버 관리자 전용 · 공지 채널 · 멘션 역할 설정 | 설정 채널 · 역할 · 봇 권한 부족 경고 |
 | `/공지채널해제` | 공지 중계 해제 | `림버스 컴퍼니 공지 중계 해제` |
-| `/인격 이름:엄숙한 애도` | 인격 187종 조회 · 이름 칸은 자동완성 | 스킬 · 패시브 목록 · 버튼으로 하나씩 · 나만 보이는 응답 |
+| `/인격 이름:엄숙한 애도` | 인격 187종 조회 · 이름 칸은 자동완성 | 스킬 · 패시브 목록 · 버튼으로 하나씩 · 그 인격이 쓰는 키워드 설명 메뉴 · 나만 보이는 응답 |
 | `/인격 이름:엄숙한 애도 공개:True` | 같은 조회 | 채널 공개 |
 | `/인격검색 죄악:분노 유형:관통` | 조건에 맞는 인격 목록 · 조건 다섯 전부 선택 | 번호 목록 · 버튼 하나가 인격 상세 |
 | `/에고 이름:소망석` | E.G.O 112종 조회 · 이름 칸은 E.G.O · 수감자 자동완성 · `공개` 옵션은 `/인격` 과 같음 | 위험등급 · 자원 · 내성 · 각성 · 침식 스킬 · 패시브 한 화면 |
@@ -100,7 +100,7 @@ E.G.O 도 같은 출처 · 위키 제목은 영어 이름 + 수감자(112종 전
 | Data | 게임 설치 폴더의 한국어 · 영어 텍스트 + wiki.gg MediaWiki API — 24시간마다 다시 읽음 · 의존성 없이 `HttpClient` · JDA `DataObject` |
 | Database | PostgreSQL 17 · JDBC · Flyway — 예약 · 중계한 공지 기록 · 서버별 공지 채널 · 점검 시각의 원본 |
 | OCR | Tesseract 한국어 모델 — 컨테이너 이미지 전용 · 로컬 `gradlew run` 은 평소 점검 시각 |
-| Test | JUnit 5 · Testcontainers · 120개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
+| Test | JUnit 5 · Testcontainers · 124개 — DB 로직은 H2 대신 실제 PostgreSQL(`ON CONFLICT` · `TIMESTAMPTZ` 동작 차이) |
 | Infra | Docker 멀티스테이지 · 비루트 JRE 이미지 · Docker Compose |
 | Build · CI | Gradle 9.7.1 wrapper · GitHub Actions — push 마다 빌드 · 테스트 · 이미지 빌드 |
 
@@ -144,12 +144,12 @@ DiscordBotPractice/
 │   ├── EgoCatalog.java               E.G.O 텍스트 · 위키 EGPage 수치 · 일러스트 · 같은 갱신에서 함께
 │   ├── GiftCatalog.java              거울 던전 기프트 텍스트 · 위키 Lua 데이터 모듈 · 강화판 · 같은 갱신에서 함께
 │   ├── AbnoCatalog.java              위키 AbnoInfo 문서 목록 · 게임 도감의 한국어 관찰 로그 · 같은 갱신에서 함께
-│   ├── IdentityListener.java         /인격 · 자동완성 · 컨테이너 · 버튼 페이지 · 죄악 색 띠
+│   ├── IdentityListener.java         /인격 · 자동완성 · 컨테이너 · 버튼 페이지 · 죄악 색 띠 · 키워드 메뉴
 │   ├── IdentitySearchListener.java   /인격검색 · 스킬 단위 조건 · /인격 상세로 잇는 결과 버튼
 │   ├── EgoListener.java              /에고 · 자동완성 · 각성 · 침식 · 패시브 한 화면
 │   ├── GiftListener.java             /기프트 · 자동완성 · 강화판 버튼
 │   ├── GiftSearchListener.java       /기프트검색 · 키워드 · 등급 · 죄악 · /기프트 화면으로 잇는 결과 버튼
-│   ├── KeywordListener.java          /키워드 · 자동완성 · 설명 · 쓰는 인격 · E.G.O
+│   ├── KeywordListener.java          /키워드 · 자동완성 · 설명 · 쓰는 인격 · E.G.O · /인격 키워드 메뉴의 응답
 │   └── AbnoListener.java             /환상체 · 자동완성 · 위험 등급 색 띠 · 관찰 로그 버튼
 ├── src/main/resources/db/migration/  스키마 이력
 ├── src/test/java/…/                  단위(계산 · 설정 파싱) · 통합(저장소 · 스케줄러 — 실제 PostgreSQL)

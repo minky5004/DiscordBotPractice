@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.components.separator.Separator;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
@@ -64,6 +65,25 @@ public class KeywordListener extends ListenerAdapter {
         event.replyComponents(container(keyword))
                 .useComponentsV2()
                 .setEphemeral(!event.getOption(OPEN, false, OptionMapping::getAsBoolean))
+                .queue();
+    }
+
+    // /인격 화면의 키워드 메뉴 · 인격 화면은 그대로 두고 설명만 따로
+    @Override
+    public void onStringSelectInteraction(StringSelectInteractionEvent event) {
+        if (!COMMAND.getName().equals(event.getComponentId())) {
+            return;
+        }
+        // 값은 키워드 ID 로만 찾는다 · 24시간 갱신으로 빠진 키워드가 글자 검색으로 다른 키워드에 걸리지 않게
+        String id = event.getValues().getFirst();
+        Keyword keyword = catalog.keywords().stream().filter(k -> k.id().equals(id)).findFirst().orElse(null);
+        if (keyword == null) {
+            event.reply("키워드 목록에 없는 항목 · 명령을 다시 실행").setEphemeral(true).queue();
+            return;
+        }
+        // 새 응답만 보내면 메뉴에 고른 값이 남아 같은 키워드를 다시 고를 수 없다 · 같은 화면으로 편집해 선택을 비우고 설명은 후속 메시지로
+        event.editComponents(event.getMessage().getComponentTree()).useComponentsV2()
+                .flatMap(hook -> hook.sendMessageComponents(container(keyword)).useComponentsV2().setEphemeral(true))
                 .queue();
     }
 

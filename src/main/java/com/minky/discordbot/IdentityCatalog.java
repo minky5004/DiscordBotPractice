@@ -448,7 +448,7 @@ class IdentityCatalog {
         Map<Integer, String> owners = new TreeMap<>();
         identities.forEach((id, row) -> {
             if (isIdentity(id)) {
-                owners.put(id, "[" + oneLine(row.getString("title", "")) + "] " + row.getString("name", ""));
+                owners.put(id, owner(oneLine(row.getString("title", "")), row.getString("name", "")));
             }
         });
         egos.forEach((id, row) -> {
@@ -521,6 +521,11 @@ class IdentityCatalog {
 
     static String wikiTitle(String title, String name) {
         return oneLine(title + " " + name).replaceAll("\\s*([【】])\\s*", "$1").replaceAll("\\s+", " ").strip();
+    }
+
+    // 키워드 사용처에 붙는 인격 이름 · /인격 화면이 이 이름으로 자기 키워드를 찾는다
+    static String owner(String title, String sinner) {
+        return "[" + title + "] " + sinner;
     }
 
     // 인격 칭호는 게임 화면용 줄바꿈을 품고 있다
