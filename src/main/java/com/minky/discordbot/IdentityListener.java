@@ -1,6 +1,7 @@
 package com.minky.discordbot;
 
 import com.minky.discordbot.IdentityCatalog.Identity;
+import com.minky.discordbot.IdentityCatalog.Keyword;
 import com.minky.discordbot.IdentityCatalog.Passive;
 import com.minky.discordbot.IdentityCatalog.Skill;
 import com.minky.discordbot.IdentityCatalog.SkillStats;
@@ -10,6 +11,8 @@ import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.container.ContainerChildComponent;
 import net.dv8tion.jda.api.components.section.Section;
+import net.dv8tion.jda.api.components.selections.SelectOption;
+import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.components.separator.Separator;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.components.thumbnail.Thumbnail;
@@ -53,6 +56,9 @@ public class IdentityListener extends ListenerAdapter {
     // 한 메시지의 컴포넌트 텍스트 합계가 4000자 · 한 덩이가 그 절반을 넘지 않게 자른다
     static final int TEXT_LIMIT = 2000;
 
+    // 한 메시지 컴포넌트 40개 한도 · 버튼이 이보다 많으면 키워드 메뉴(행 · 메뉴 2개)가 들어갈 자리가 없다
+    static final int MENU_BUTTON_LIMIT = 20;
+
     // 버튼은 라벨만큼 넓어진다 · 한 행에 다섯이 들어가게 이름을 자른다
     static final int LABEL_WIDTH = 14;
 
@@ -92,7 +98,7 @@ public class IdentityListener extends ListenerAdapter {
             return;
         }
         // 컨테이너는 Components V2 라 content · embeds 와 함께 쓸 수 없다
-        event.replyComponents(container(identity, 0))
+        event.replyComponents(container(identity, 0, catalog.keywords()))
                 .useComponentsV2()
                 .setEphemeral(!event.getOption(OPEN, false, OptionMapping::getAsBoolean))
                 .queue();
@@ -112,11 +118,11 @@ public class IdentityListener extends ListenerAdapter {
             return;
         }
         // 편집도 V1 이 기본이라 플래그를 다시 준다 — 없으면 컨테이너가 거부되고 상호작용이 미응답으로 남는다
-        event.editComponents(container(identity, Integer.parseInt(parts[2]))).useComponentsV2().queue();
+        event.editComponents(container(identity, Integer.parseInt(parts[2]), catalog.keywords())).useComponentsV2().queue();
     }
 
     // 페이지 0 은 번호 붙은 목록 · 1부터는 그 번호의 스킬 또는 패시브 하나
-    static Container container(Identity identity, int page) {
+    static Container container(Identity identity, int page, List<Keyword> keywords) {
         List<Entry> entries = entries(identity);
         List<TextDisplay> heading = new ArrayList<>();
         List<ContainerChildComponent> body = new ArrayList<>();
@@ -153,8 +159,27 @@ public class IdentityListener extends ListenerAdapter {
         if (identity.stats() != null || thumbnail != null) {
             children.add(TextDisplay.of(WIKI_CREDIT));
         }
-        children.addAll(rows(buttons(identity, page)));
+        List<Button> buttons = buttons(identity, page);
+        children.addAll(rows(buttons));
+        StringSelectMenu menu = menu(identity, keywords);
+        if (menu != null && buttons.size() <= MENU_BUTTON_LIMIT) {
+            children.add(ActionRow.of(menu));
+        }
         return Container.of(children).withAccentColor(color(identity, page));
+    }
+
+    // 고르면 KeywordListener 가 설명을 나만 보기로 띄운다 · 키워드 사용처에 이 인격 이름이 있는 것만
+    private static StringSelectMenu menu(Identity identity, List<Keyword> keywords) {
+        String owner = IdentityCatalog.owner(identity.title(), identity.sinner());
+        List<SelectOption> options = keywords.stream()
+                .filter(keyword -> keyword.users().contains(owner))
+                .limit(StringSelectMenu.OPTIONS_MAX_AMOUNT)
+                .map(keyword -> SelectOption.of(NoticeListener.cut(keyword.name(), SelectOption.LABEL_MAX_LENGTH), keyword.id()))
+                .toList();
+        return options.isEmpty() ? null : StringSelectMenu.create(KeywordListener.COMMAND.getName())
+                .setPlaceholder("키워드 설명 보기")
+                .addOptions(options)
+                .build();
     }
 
     // 스킬 페이지는 그 스킬의 아이콘 · 목록과 패시브는 인격 일러스트

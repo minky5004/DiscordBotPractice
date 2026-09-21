@@ -1,13 +1,17 @@
 package com.minky.discordbot;
 
 import com.minky.discordbot.IdentityCatalog.Identity;
+import com.minky.discordbot.IdentityCatalog.Keyword;
 import com.minky.discordbot.IdentityCatalog.Passive;
 import com.minky.discordbot.IdentityCatalog.Skill;
 import com.minky.discordbot.IdentityCatalog.SkillStats;
 import com.minky.discordbot.IdentityCatalog.Stats;
+import net.dv8tion.jda.api.components.actionrow.ActionRow;
 import net.dv8tion.jda.api.components.buttons.Button;
 import net.dv8tion.jda.api.components.container.Container;
 import net.dv8tion.jda.api.components.section.Section;
+import net.dv8tion.jda.api.components.selections.SelectOption;
+import net.dv8tion.jda.api.components.selections.StringSelectMenu;
 import net.dv8tion.jda.api.components.textdisplay.TextDisplay;
 import net.dv8tion.jda.api.components.thumbnail.Thumbnail;
 import org.junit.jupiter.api.Test;
@@ -54,9 +58,60 @@ class IdentityListenerTest {
                 .toList();
     }
 
+    private static final List<Keyword> KEYWORDS = List.of(
+            new Keyword("Combustion", "화상", "턴 종료 시 피해", List.of("[LCB 수감자] 이상")),
+            new Keyword("Sinking", "침잠", "피격 시 정신력 피해", List.of("[LCB 수감자] 이상", "[로보토미 E.G.O::엄숙한 애도] 이상")),
+            new Keyword("SinkingWhite", "나비", "특수 침잠", List.of("[로보토미 E.G.O::엄숙한 애도] 이상")));
+
+    private static StringSelectMenu menu(Container container) {
+        return container.getComponents().stream()
+                .filter(ActionRow.class::isInstance)
+                .flatMap(row -> ((ActionRow) row).getComponents().stream())
+                .filter(StringSelectMenu.class::isInstance)
+                .map(StringSelectMenu.class::cast)
+                .findFirst()
+                .orElse(null);
+    }
+
+    @Test
+    void menuOffersOnlyKeywordsThisIdentityUses() {
+        StringSelectMenu menu = menu(IdentityListener.container(SOLEMN_LAMENT, 1, KEYWORDS));
+
+        assertEquals("키워드", menu.getCustomId());
+        assertEquals(List.of("침잠", "나비"), menu.getOptions().stream().map(SelectOption::getLabel).toList());
+        assertEquals(List.of("Sinking", "SinkingWhite"), menu.getOptions().stream().map(SelectOption::getValue).toList());
+    }
+
+    @Test
+    void identityWithoutKeywordsGetsNoMenu() {
+        Identity lcb = new Identity(10201, "LCB 수감자", "파우스트", null, null, List.of(), List.of());
+
+        assertNull(menu(IdentityListener.container(lcb, 0, KEYWORDS)));
+    }
+
+    @Test
+    void menuIsDroppedWhenButtonsFillTheMessage() {
+        // 버튼 25개면 컴포넌트가 이미 40개 한도에 닿는다 · 메뉴 두 개(행 · 메뉴)를 더하면 응답 전체가 거부된다
+        List<Skill> skills = IntStream.range(0, 40)
+                .mapToObj(i -> new Skill(1011000 + i, "스킬" + i, "원문", null))
+                .toList();
+        Identity many = new Identity(10110, "로보토미 E.G.O::엄숙한 애도", "이상", null, null, skills, List.of());
+
+        assertNull(menu(IdentityListener.container(many, 0, KEYWORDS)));
+    }
+
+    @Test
+    void menuKeepsWithinDiscordOptionLimit() {
+        List<Keyword> many = IntStream.range(0, 30)
+                .mapToObj(i -> new Keyword("K" + i, "키워드" + i, "설명", List.of("[로보토미 E.G.O::엄숙한 애도] 이상")))
+                .toList();
+
+        assertEquals(StringSelectMenu.OPTIONS_MAX_AMOUNT, menu(IdentityListener.container(SOLEMN_LAMENT, 0, many)).getOptions().size());
+    }
+
     @Test
     void firstPageListsEveryEntryWithItsNumbers() {
-        List<String> texts = texts(IdentityListener.container(SOLEMN_LAMENT, 0));
+        List<String> texts = texts(IdentityListener.container(SOLEMN_LAMENT, 0, List.of()));
 
         assertEquals("## [로보토미 E.G.O::엄숙한 애도] 이상 · ★★★", texts.get(0));
         assertEquals("내성  참격 ×1.0 · 관통 ×0.5", texts.get(1));
@@ -75,7 +130,7 @@ class IdentityListenerTest {
 
     @Test
     void detailPagePutsTheSkillFirstAndTheIdentityInSmallText() {
-        List<String> texts = texts(IdentityListener.container(SOLEMN_LAMENT, 1));
+        List<String> texts = texts(IdentityListener.container(SOLEMN_LAMENT, 1, List.of()));
 
         // 상세에서는 스킬이 제목 · 인격은 작은 글씨로 물러나고 수치는 본문 크기로 올라온다
         assertEquals("### 떠난이에게 축하를", texts.get(0));
@@ -90,13 +145,13 @@ class IdentityListenerTest {
                 List.of(new Skill(1010101, "지우기", "코인1 첫 효과\n코인2 둘째 효과\n코인이 아닌 줄", null)), List.of());
 
         assertEquals("**코인 1** 첫 효과\n**코인 2** 둘째 효과\n코인이 아닌 줄",
-                texts(IdentityListener.container(identity, 1)).get(3));
+                texts(IdentityListener.container(identity, 1, List.of())).get(3));
     }
 
     @Test
     void emptySkillTextStillRendersSomething() {
         // 디스코드는 빈 TextDisplay 를 거부한다
-        assertEquals("-# 효과 없음", texts(IdentityListener.container(SOLEMN_LAMENT, 2)).get(3));
+        assertEquals("-# 효과 없음", texts(IdentityListener.container(SOLEMN_LAMENT, 2, List.of())).get(3));
     }
 
     @Test
@@ -106,26 +161,26 @@ class IdentityListenerTest {
                         new Skill(1011002, "아이콘 없음", "원문", null)),
                 List.of(new Passive(1011011, "패시브", "원문", false, null)));
 
-        assertEquals("https://wiki/Icon.png", thumbnail(IdentityListener.container(identity, 1)));
+        assertEquals("https://wiki/Icon.png", thumbnail(IdentityListener.container(identity, 1, List.of())));
         // 위키에서 짝을 못 찾은 스킬과 패시브 · 목록은 인격 일러스트로
-        assertEquals("https://wiki/Full.png", thumbnail(IdentityListener.container(identity, 2)));
-        assertEquals("https://wiki/Full.png", thumbnail(IdentityListener.container(identity, 3)));
-        assertEquals("https://wiki/Full.png", thumbnail(IdentityListener.container(identity, 0)));
+        assertEquals("https://wiki/Full.png", thumbnail(IdentityListener.container(identity, 2, List.of())));
+        assertEquals("https://wiki/Full.png", thumbnail(IdentityListener.container(identity, 3, List.of())));
+        assertEquals("https://wiki/Full.png", thumbnail(IdentityListener.container(identity, 0, List.of())));
     }
 
     @Test
     void identityWithoutArtGetsNoSection() {
         // 썸네일이 없으면 섹션도 없이 머리를 그대로 쌓는다
-        assertNull(thumbnail(IdentityListener.container(SOLEMN_LAMENT, 0)));
+        assertNull(thumbnail(IdentityListener.container(SOLEMN_LAMENT, 0, List.of())));
         assertEquals("## [로보토미 E.G.O::엄숙한 애도] 이상 · ★★★",
-                texts(IdentityListener.container(SOLEMN_LAMENT, 0)).get(0));
+                texts(IdentityListener.container(SOLEMN_LAMENT, 0, List.of())).get(0));
     }
 
     @Test
     void accentColourFollowsTheSkillsSin() {
         // 상세는 그 스킬의 죄악 · 목록은 가장 많이 쓰인 죄악
-        assertEquals(0x3A6FD8, IdentityListener.container(SOLEMN_LAMENT, 1).getAccentColorRaw());
-        assertEquals(0x3A6FD8, IdentityListener.container(SOLEMN_LAMENT, 0).getAccentColorRaw());
+        assertEquals(0x3A6FD8, IdentityListener.container(SOLEMN_LAMENT, 1, List.of()).getAccentColorRaw());
+        assertEquals(0x3A6FD8, IdentityListener.container(SOLEMN_LAMENT, 0, List.of()).getAccentColorRaw());
     }
 
     @Test
@@ -137,7 +192,7 @@ class IdentityListenerTest {
                         new Skill(1010103, "수비2", "원문", new SkillStats(null, "방어", 10, "+4", 1, null))),
                 List.of());
 
-        assertEquals(0xDC3545, IdentityListener.container(identity, 0).getAccentColorRaw());
+        assertEquals(0xDC3545, IdentityListener.container(identity, 0, List.of()).getAccentColorRaw());
     }
 
     @Test
@@ -146,15 +201,15 @@ class IdentityListenerTest {
         Identity empty = new Identity(10101, "LCB 수감자", "이상", null, null, List.of(), List.of());
 
         assertEquals(List.of("## [LCB 수감자] 이상", "-# 스킬 · 패시브를 읽지 못함"),
-                texts(IdentityListener.container(empty, 0)));
+                texts(IdentityListener.container(empty, 0, List.of())));
         assertEquals(List.of(), IdentityListener.buttons(empty, 0));
     }
 
     @Test
     void pageBeyondTheListFallsBackToIt() {
         // 24시간 갱신이 항목을 줄이면 옛 메시지의 버튼이 범위 밖 번호를 들고 온다
-        assertEquals(texts(IdentityListener.container(SOLEMN_LAMENT, 0)),
-                texts(IdentityListener.container(SOLEMN_LAMENT, 9)));
+        assertEquals(texts(IdentityListener.container(SOLEMN_LAMENT, 0, List.of())),
+                texts(IdentityListener.container(SOLEMN_LAMENT, 9, List.of())));
     }
 
     @Test
@@ -163,7 +218,7 @@ class IdentityListenerTest {
                 List.of(new Skill(1010101, "지우기", "원문", null)),
                 List.of(new Passive(1010101, "정보전달", "패시브 원문", false, null)));
 
-        List<String> texts = texts(IdentityListener.container(identity, 0));
+        List<String> texts = texts(IdentityListener.container(identity, 0, List.of()));
 
         assertEquals("## [LCB 수감자] 이상", texts.get(0));
         assertEquals(List.of("**`1`  지우기**", "-# 수치 없음", "**`2`  패시브 · 정보전달**", "-# 조건 없음"),
@@ -178,7 +233,7 @@ class IdentityListenerTest {
                 .toList();
         Identity identity = new Identity(11115, "거미집 중지 아비", "그레고르", null, null, skills, List.of());
 
-        for (String text : texts(IdentityListener.container(identity, 1))) {
+        for (String text : texts(IdentityListener.container(identity, 1, List.of()))) {
             assertTrue(text.length() <= 2000, "덩이 하나가 2000자를 넘는다: " + text.length());
         }
     }
