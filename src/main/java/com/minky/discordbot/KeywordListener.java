@@ -81,7 +81,10 @@ public class KeywordListener extends ListenerAdapter {
             event.reply("키워드 목록에 없는 항목 · 명령을 다시 실행").setEphemeral(true).queue();
             return;
         }
-        event.replyComponents(container(keyword)).useComponentsV2().setEphemeral(true).queue();
+        // 새 응답만 보내면 메뉴에 고른 값이 남아 같은 키워드를 다시 고를 수 없다 · 같은 화면으로 편집해 선택을 비우고 설명은 후속 메시지로
+        event.editComponents(event.getMessage().getComponentTree()).useComponentsV2()
+                .flatMap(hook -> hook.sendMessageComponents(container(keyword)).useComponentsV2().setEphemeral(true))
+                .queue();
     }
 
     static Container container(Keyword keyword) {
